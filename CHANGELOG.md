@@ -72,8 +72,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `grades()` — list of grades with non-zero components
 - `max_grade()`, `min_grade()` — highest/lowest non-zero grade
 
+**Geometric Predicates**
+- `angle_between(other)` — angle between vectors in radians
+- `cos_angle(other)`, `sin_angle(other)` — trig functions of angle
+- `is_parallel(other)` — check if vectors are parallel
+- `is_same_direction(other)` — check if vectors point same way
+- `is_antiparallel(other)` — check if vectors point opposite ways
+- `is_orthogonal(other)` — check if vectors are perpendicular
+
 **Infrastructure**
-- Python test suite (245 tests)
+- Python test suite (269 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
