@@ -269,3 +269,347 @@ def test_normalize_zero_raises():
     with pytest.raises(Exception):
         zero.normalized()
 
+
+# =============================================================================
+# OUTER PRODUCT (WEDGE) TESTS
+# =============================================================================
+
+def test_outer_product_orthogonal_vectors():
+    """e1 ^ e2 should equal e12."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    result = e1.outer_product(e2).to_list()
+    assert result[3] == 1.0  # e12 coefficient
+    assert result[0] == 0.0
+    assert result[1] == 0.0
+    assert result[2] == 0.0
+
+
+def test_outer_product_anticommutes():
+    """e2 ^ e1 should equal -e12."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    result = e2.outer_product(e1).to_list()
+    assert result[3] == -1.0  # e12 coefficient, opposite sign
+
+
+def test_outer_product_same_vector_zero():
+    """e1 ^ e1 should equal 0 (key property of wedge product)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    result = e1.outer_product(e1).to_list()
+    assert result == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_wedge_operator():
+    """Test ^ operator for outer product."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    result = (e1 ^ e2).to_list()
+    assert result[3] == 1.0
+
+
+def test_wedge_alias():
+    """wedge() should be an alias for outer_product()."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    assert e1.outer_product(e2).to_list() == e1.wedge(e2).to_list()
+
+
+# =============================================================================
+# LEFT CONTRACTION SUBSET REQUIREMENT
+# =============================================================================
+
+def test_left_contraction_non_subset_zero():
+    """e2 ⌋ e1 should be 0 (e2 not subset of e1)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    result = e2.left_contraction(e1).to_list()
+    assert result == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_left_contraction_operator():
+    """Test | operator for left contraction."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e12 = lcc.Multivector([0.0, 0.0, 0.0, 1.0])
+    result = (e1 | e12).to_list()
+    assert result[2] == 1.0  # e2
+
+
+def test_lc_alias():
+    """lc() should be an alias for left_contraction()."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e12 = lcc.Multivector([0.0, 0.0, 0.0, 1.0])
+    assert e1.left_contraction(e12).to_list() == e1.lc(e12).to_list()
+
+
+# =============================================================================
+# SCALAR MULTIPLICATION AND DIVISION
+# =============================================================================
+
+def test_scalar_multiply_right():
+    """mv * 2.0 should scale all coefficients."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    result = (mv * 2.0).to_list()
+    assert result == [2.0, 4.0, 6.0, 8.0]
+
+
+def test_scalar_multiply_left():
+    """2.0 * mv should scale all coefficients."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    result = (2.0 * mv).to_list()
+    assert result == [2.0, 4.0, 6.0, 8.0]
+
+
+def test_scalar_division():
+    """mv / 2.0 should halve all coefficients."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([2.0, 4.0, 6.0, 8.0])
+    result = (mv / 2.0).to_list()
+    assert result == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_division_by_zero_raises():
+    """Division by zero should raise."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    with pytest.raises(ZeroDivisionError):
+        mv / 0.0
+
+
+# =============================================================================
+# METHOD ALIASES
+# =============================================================================
+
+def test_gp_alias():
+    """gp() should be an alias for geometric_product()."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0])
+    assert e1.geometric_product(e2).to_list() == e1.gp(e2).to_list()
+
+
+# =============================================================================
+# DUNDER METHODS
+# =============================================================================
+
+def test_len():
+    """len(mv) should return coefficient count."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    assert len(mv) == 4
+    mv8 = lcc.Multivector([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    assert len(mv8) == 8
+
+
+def test_getitem():
+    """mv[i] should return coefficient at index i."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    assert mv[0] == 1.0
+    assert mv[1] == 2.0
+    assert mv[2] == 3.0
+    assert mv[3] == 4.0
+
+
+def test_getitem_negative_index():
+    """mv[-1] should return last coefficient."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    assert mv[-1] == 4.0
+    assert mv[-2] == 3.0
+
+
+def test_getitem_out_of_range():
+    """Out of range index should raise IndexError."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    with pytest.raises(IndexError):
+        mv[10]
+
+
+def test_str():
+    """str(mv) should give human-readable representation."""
+    import largecrimsoncanine as lcc
+    # Pure scalar
+    s = lcc.Multivector([5.0, 0.0, 0.0, 0.0])
+    assert str(s) == "5"
+    # Zero
+    zero = lcc.Multivector([0.0, 0.0, 0.0, 0.0])
+    assert str(zero) == "0"
+    # Vector
+    v = lcc.Multivector([0.0, 3.0, 0.0, 0.0])
+    assert "e1" in str(v)
+
+
+def test_repr_shows_dims():
+    """repr(mv) should show dimensions."""
+    import largecrimsoncanine as lcc
+    mv = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    r = repr(mv)
+    assert "dims=2" in r
+
+
+# =============================================================================
+# DIMENSION MISMATCH TESTS
+# =============================================================================
+
+def test_dimension_mismatch_geometric_product():
+    """Geometric product of different dimensions should raise."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])  # 2D
+    b = lcc.Multivector([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # 3D
+    with pytest.raises(Exception):
+        a * b
+
+
+def test_dimension_mismatch_outer_product():
+    """Outer product of different dimensions should raise."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    b = lcc.Multivector([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    with pytest.raises(Exception):
+        a ^ b
+
+
+def test_dimension_mismatch_left_contraction():
+    """Left contraction of different dimensions should raise."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    b = lcc.Multivector([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    with pytest.raises(Exception):
+        a | b
+
+
+def test_dimension_mismatch_subtraction():
+    """Subtraction of different dimensions should raise."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    b = lcc.Multivector([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    with pytest.raises(Exception):
+        a - b
+
+
+# =============================================================================
+# ZERO MULTIVECTOR TESTS
+# =============================================================================
+
+def test_zero_addition():
+    """0 + A = A."""
+    import largecrimsoncanine as lcc
+    zero = lcc.Multivector([0.0, 0.0, 0.0, 0.0])
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    result = (zero + a).to_list()
+    assert result == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_zero_multiplication():
+    """0 * A = 0."""
+    import largecrimsoncanine as lcc
+    zero = lcc.Multivector([0.0, 0.0, 0.0, 0.0])
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    result = (zero * a).to_list()
+    assert result == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_zero_outer_product():
+    """0 ^ A = 0."""
+    import largecrimsoncanine as lcc
+    zero = lcc.Multivector([0.0, 0.0, 0.0, 0.0])
+    a = lcc.Multivector([1.0, 2.0, 3.0, 4.0])
+    result = (zero ^ a).to_list()
+    assert result == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_zero_norm():
+    """|0| = 0."""
+    import largecrimsoncanine as lcc
+    zero = lcc.Multivector([0.0, 0.0, 0.0, 0.0])
+    assert zero.norm() == 0.0
+    assert zero.norm_squared() == 0.0
+
+
+# =============================================================================
+# 3D ALGEBRA TESTS
+# =============================================================================
+
+def test_3d_basis_vectors():
+    """Test 3D algebra (Cl(3) with 8 coefficients)."""
+    import largecrimsoncanine as lcc
+    # e1, e2, e3 in 3D
+    e1 = lcc.Multivector([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    e2 = lcc.Multivector([0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    e3 = lcc.Multivector([0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+
+    # e1 * e1 = 1
+    assert (e1 * e1).to_list()[0] == 1.0
+
+    # e1 ^ e2 = e12 (index 3)
+    e12 = (e1 ^ e2).to_list()
+    assert e12[3] == 1.0
+
+    # e1 ^ e2 ^ e3 = e123 (index 7)
+    e123 = (e1 ^ e2 ^ e3).to_list()
+    assert e123[7] == 1.0
+
+
+def test_3d_trivector_reverse():
+    """Reverse of e123 flips sign (grade 3)."""
+    import largecrimsoncanine as lcc
+    e123 = lcc.Multivector([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    rev = e123.reverse().to_list()
+    assert rev[7] == -1.0  # grade 3 flips
+
+
+# =============================================================================
+# GEOMETRIC PRODUCT PROPERTIES
+# =============================================================================
+
+def test_geometric_product_associativity():
+    """(A * B) * C = A * (B * C)."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 0.0, 0.0])
+    b = lcc.Multivector([0.0, 1.0, 1.0, 0.0])
+    c = lcc.Multivector([0.5, 0.0, 0.0, 1.0])
+
+    left = ((a * b) * c).to_list()
+    right = (a * (b * c)).to_list()
+
+    for i in range(4):
+        assert abs(left[i] - right[i]) < 1e-10
+
+
+def test_geometric_product_distributivity():
+    """A * (B + C) = A*B + A*C."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector([1.0, 2.0, 0.0, 0.0])
+    b = lcc.Multivector([0.0, 1.0, 1.0, 0.0])
+    c = lcc.Multivector([0.5, 0.0, 0.0, 1.0])
+
+    left = (a * (b + c)).to_list()
+    right = ((a * b) + (a * c)).to_list()
+
+    for i in range(4):
+        assert abs(left[i] - right[i]) < 1e-10
+
+
+def test_norm_bivector():
+    """Norm of a bivector."""
+    import largecrimsoncanine as lcc
+    # Pure bivector e12
+    e12 = lcc.Multivector([0.0, 0.0, 0.0, 1.0])
+    # |e12|² = e12 * ~e12 = e12 * (-e12) = -e12² = -(-1) = 1
+    # Actually in Euclidean: e12² = e1*e2*e1*e2 = -e1*e1*e2*e2 = -1
+    # So e12 * ~e12 = e12 * (-e12) = -(e12)² = -(-1) = 1
+    assert e12.norm_squared() == 1.0
+    assert e12.norm() == 1.0
+

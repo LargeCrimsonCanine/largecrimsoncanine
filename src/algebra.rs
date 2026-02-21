@@ -106,17 +106,18 @@ mod tests {
 
     #[test]
     fn test_reverse_sign() {
-        // Grade 0: (-1)^0 = 1
+        // Formula: (-1)^(k(k-1)/2)
+        // Grade 0: (-1)^(0*-1/2) = (-1)^0 = 1
         assert_relative_eq!(reverse_sign(0), 1.0);
-        // Grade 1: (-1)^0 = 1
+        // Grade 1: (-1)^(1*0/2) = (-1)^0 = 1
         assert_relative_eq!(reverse_sign(1), 1.0);
-        // Grade 2: (-1)^1 = -1
+        // Grade 2: (-1)^(2*1/2) = (-1)^1 = -1
         assert_relative_eq!(reverse_sign(2), -1.0);
-        // Grade 3: (-1)^3 = -1
+        // Grade 3: (-1)^(3*2/2) = (-1)^3 = -1
         assert_relative_eq!(reverse_sign(3), -1.0);
-        // Grade 4: (-1)^6 = 1
+        // Grade 4: (-1)^(4*3/2) = (-1)^6 = 1
         assert_relative_eq!(reverse_sign(4), 1.0);
-        // Grade 5: (-1)^10 = 1
+        // Grade 5: (-1)^(5*4/2) = (-1)^10 = 1
         assert_relative_eq!(reverse_sign(5), 1.0);
     }
 }

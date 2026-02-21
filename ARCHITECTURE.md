@@ -65,10 +65,20 @@ This is a potential future optimization. The API change it would require means i
 
 We expose geometric algebra operations as Python operators where natural:
 
-- `a * b` — geometric product (fundamental operation)
+- `a * b` — geometric product (or scalar multiplication if b is float)
 - `a ^ b` — outer (wedge) product
+- `a | b` — left contraction (inner product)
+- `a + b`, `a - b` — addition, subtraction
+- `-a` — negation
+- `a / s` — scalar division
+- `s * a` — scalar multiplication (commutative)
 
 The goal is that a physicist or roboticist familiar with geometric algebra notation should find LCC immediately readable. We do not invent new notation.
+
+Short method aliases are provided for common operations:
+- `gp()` — alias for `geometric_product()`
+- `wedge()` — alias for `outer_product()`
+- `lc()`, `inner()` — aliases for `left_contraction()`
 
 ## Equality and Hashing
 
@@ -84,11 +94,12 @@ If a future use case requires hashability, we could implement `__hash__` based o
 
 ## Dual API Pattern: Option vs Exception
 
-Some operations (like `normalize`) have two variants:
-- `normalize()` returns `None` on failure (idiomatic for Rust callers, also works in Python)
-- `normalized()` raises `ValueError` on failure (idiomatic for Python callers who expect exceptions)
+Some operations can fail in predictable ways. Rust and Python have different idioms for handling this:
 
-This pattern appears where operations can fail in a predictable, recoverable way.
+- **Rust side:** `normalize()` returns `Option<Self>`, returning `None` for zero-norm multivectors
+- **Python side:** `normalized()` raises `ValueError` on failure, which Python users expect
+
+Only the exception-raising variant is exposed to Python. Rust callers can use the Option-returning version internally. This keeps Python users in idiomatic Python-land while preserving Rust idioms in the backend.
 
 ## Error Messages
 

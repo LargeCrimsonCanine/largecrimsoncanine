@@ -52,7 +52,8 @@ impl Multivector {
                 len, lower, upper
             )));
         }
-        let dims = (len as f64).log2() as usize;
+        // len is guaranteed to be a power of 2, so trailing_zeros gives log2
+        let dims = len.trailing_zeros() as usize;
         Ok(Multivector { coeffs, dims })
     }
 
@@ -116,6 +117,11 @@ impl Multivector {
         Ok(Multivector { coeffs: result, dims: self.dims })
     }
 
+    /// Alias for geometric_product.
+    pub fn gp(&self, other: &Multivector) -> PyResult<Self> {
+        self.geometric_product(other)
+    }
+
     /// Compute the outer (wedge) product of two multivectors.
     ///
     /// The outer product increases grade: the outer product of a grade-r
@@ -149,6 +155,11 @@ impl Multivector {
         Ok(Multivector { coeffs: result, dims: self.dims })
     }
 
+    /// Alias for outer_product (wedge product).
+    pub fn wedge(&self, other: &Multivector) -> PyResult<Self> {
+        self.outer_product(other)
+    }
+
     /// Compute the left contraction (inner product) of two multivectors.
     ///
     /// The left contraction A ⌋ B measures how much of B is "along" A.
@@ -178,6 +189,8 @@ impl Multivector {
                 let grade_b = algebra::blade_grade(j);
                 // Left contraction is zero when grade(A) > grade(B)
                 if grade_a > grade_b { continue; }
+                // Left contraction requires A ⊆ B (all basis vectors in A appear in B)
+                if (i & j) != i { continue; }
                 let (blade, sign) = algebra::blade_product(i, j);
                 let result_grade = algebra::blade_grade(blade);
                 // Only keep the grade (s-r) component
@@ -195,21 +208,99 @@ impl Multivector {
         self.left_contraction(other)
     }
 
+    /// Short alias for left_contraction.
+    pub fn lc(&self, other: &Multivector) -> PyResult<Self> {
+        self.left_contraction(other)
+    }
+
     /// Return the coefficient array as a Python list.
     pub fn to_list(&self) -> Vec<f64> {
         self.coeffs.clone()
     }
 
     pub fn __repr__(&self) -> String {
-        format!("Multivector({:?})", self.coeffs)
+        format!("Multivector({:?}, dims={})", self.coeffs, self.dims)
     }
 
-    pub fn __mul__(&self, other: &Multivector) -> PyResult<Self> {
-        self.geometric_product(other)
+    /// Human-readable string showing non-zero basis blade components.
+    pub fn __str__(&self) -> String {
+        let mut parts = Vec::new();
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c == 0.0 { continue; }
+            let blade_name = Self::blade_name(i);
+            if blade_name == "1" {
+                parts.push(format!("{}", c));
+            } else {
+                parts.push(format!("{}*{}", c, blade_name));
+            }
+        }
+        if parts.is_empty() {
+            "0".to_string()
+        } else {
+            parts.join(" + ")
+        }
+    }
+
+    /// Return the number of coefficients.
+    pub fn __len__(&self) -> usize {
+        self.coeffs.len()
+    }
+
+    /// Get coefficient by index.
+    pub fn __getitem__(&self, index: isize) -> PyResult<f64> {
+        let len = self.coeffs.len() as isize;
+        let idx = if index < 0 { len + index } else { index };
+        if idx < 0 || idx >= len {
+            Err(pyo3::exceptions::PyIndexError::new_err(
+                format!("index {} out of range for {} coefficients", index, len)
+            ))
+        } else {
+            Ok(self.coeffs[idx as usize])
+        }
+    }
+
+    /// Multiplication: geometric product with Multivector, or scalar multiplication with float.
+    pub fn __mul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(mv) = other.extract::<PyRef<Multivector>>() {
+            self.geometric_product(&mv)
+        } else if let Ok(scalar) = other.extract::<f64>() {
+            Ok(self.scale(scalar))
+        } else {
+            Err(pyo3::exceptions::PyTypeError::new_err(
+                "unsupported operand type for *: expected Multivector or float"
+            ))
+        }
+    }
+
+    /// Right multiplication for scalar * Multivector.
+    pub fn __rmul__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(scalar) = other.extract::<f64>() {
+            Ok(self.scale(scalar))
+        } else {
+            Err(pyo3::exceptions::PyTypeError::new_err(
+                "unsupported operand type for *: expected float"
+            ))
+        }
+    }
+
+    /// Division by scalar.
+    pub fn __truediv__(&self, other: f64) -> PyResult<Self> {
+        if other == 0.0 {
+            Err(pyo3::exceptions::PyZeroDivisionError::new_err(
+                "cannot divide multivector by zero"
+            ))
+        } else {
+            Ok(self.scale(1.0 / other))
+        }
     }
 
     pub fn __xor__(&self, other: &Multivector) -> PyResult<Self> {
         self.outer_product(other)
+    }
+
+    /// Left contraction operator (|).
+    pub fn __or__(&self, other: &Multivector) -> PyResult<Self> {
+        self.left_contraction(other)
     }
 
     /// Add two multivectors component-wise.
@@ -345,8 +436,27 @@ impl Multivector {
 
     /// Return a normalized copy of this multivector (unit norm).
     ///
+    /// Raises ValueError if the multivector has zero norm.
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn normalized(&self) -> PyResult<Self> {
+        let n = self.norm();
+        if n == 0.0 {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot normalize zero multivector"
+            ))
+        } else {
+            Ok(self.scale(1.0 / n))
+        }
+    }
+}
+
+// Rust-only methods (not exposed to Python)
+impl Multivector {
+    /// Return a normalized copy of this multivector (unit norm).
+    ///
     /// Returns None if the norm is zero (cannot normalize).
-    /// In Python, this returns None; use `normalized()` if you prefer an exception.
+    /// For Python users, use `normalized()` which raises an exception instead.
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn normalize(&self) -> Option<Self> {
@@ -358,16 +468,25 @@ impl Multivector {
         }
     }
 
-    /// Return a normalized copy, or raise an error if norm is zero.
+    /// Convert a blade index to a human-readable name.
     ///
-    /// This is the primary normalization method for Python users.
-    /// Raises ValueError if the multivector has zero norm.
-    ///
-    /// For Rust callers who prefer Option semantics, use `normalize()` instead.
-    pub fn normalized(&self) -> PyResult<Self> {
-        self.normalize().ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("cannot normalize zero multivector")
-        })
+    /// Index 0 = "1" (scalar), Index 1 = "e1", Index 2 = "e2",
+    /// Index 3 = "e12", etc.
+    fn blade_name(index: usize) -> String {
+        if index == 0 {
+            return "1".to_string();
+        }
+        let mut name = String::from("e");
+        let mut idx = index;
+        let mut basis = 1;
+        while idx > 0 {
+            if idx & 1 == 1 {
+                name.push_str(&basis.to_string());
+            }
+            idx >>= 1;
+            basis += 1;
+        }
+        name
     }
 }
 
