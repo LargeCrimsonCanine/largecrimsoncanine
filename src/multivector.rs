@@ -178,6 +178,81 @@ impl Multivector {
         Ok(Multivector { coeffs, dims })
     }
 
+    /// Create a rotor that rotates vector `a` to vector `b`.
+    ///
+    /// The rotor R satisfies: R * a * ~R ∝ b (parallel to b).
+    /// If both vectors are unit vectors, R * a * ~R = b exactly.
+    ///
+    /// The rotation is through the plane containing a and b,
+    /// by the angle between them.
+    ///
+    /// Both vectors must have the same dimension.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation in xy-plane
+    /// rotated = R.sandwich(e1)  # should equal e2
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[staticmethod]
+    pub fn rotor_from_vectors(a: PyRef<'_, Multivector>, b: PyRef<'_, Multivector>) -> PyResult<Self> {
+        if a.dims != b.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: first vector is Cl({}) but second vector is Cl({}); \
+                both must have the same dimension",
+                a.dims, b.dims
+            )));
+        }
+
+        // Normalize both vectors
+        let a_norm = a.normalize().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err(
+                "first vector has zero norm; cannot create rotor from zero vector"
+            )
+        })?;
+        let b_norm = b.normalize().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err(
+                "second vector has zero norm; cannot create rotor from zero vector"
+            )
+        })?;
+
+        // Rotor R = (1 + b̂*â) / |1 + b̂*â|
+        // This gives a rotor that rotates â to b̂
+        let one = Multivector::from_scalar(1.0, a.dims)?;
+        let ba = b_norm.geometric_product(&a_norm)?;
+        let r_unnorm = one.__add__(&ba)?;
+
+        // Handle anti-parallel case (a and b point in opposite directions)
+        // In this case 1 + b̂â ≈ 0, need to find perpendicular vector
+        let r_norm_sq = r_unnorm.norm_squared();
+        if r_norm_sq.abs() < 1e-10 {
+            // Vectors are anti-parallel, find any perpendicular vector
+            // Use e_i where a has smallest component
+            let mut min_idx = 0;
+            let mut min_val = f64::MAX;
+            for i in 0..a.dims {
+                let coeff = a.coeffs[1 << i].abs();
+                if coeff < min_val {
+                    min_val = coeff;
+                    min_idx = i;
+                }
+            }
+            let perp = Multivector::basis(min_idx + 1, a.dims)?;
+            // Rotor for 180° rotation: R = perp * â (any perpendicular vector works)
+            let perp_norm = perp.normalize().ok_or_else(|| {
+                pyo3::exceptions::PyValueError::new_err(
+                    "failed to create perpendicular vector for anti-parallel case"
+                )
+            })?;
+            perp_norm.geometric_product(&a_norm)
+        } else {
+            r_unnorm.normalized()
+        }
+    }
+
     /// Create a bivector (grade-2) from components.
     ///
     /// For 2D: provide [e12_coeff]
@@ -667,6 +742,59 @@ impl Multivector {
         }
         let other_inv = other.inverse()?;
         self.geometric_product(&other_inv)
+    }
+
+    // =========================================================================
+    // ROTOR OPERATIONS
+    // =========================================================================
+
+    /// Apply this rotor to a multivector via the sandwich product: R * x * ~R.
+    ///
+    /// This is the standard way to apply a rotation (or other orthogonal transformation)
+    /// represented by a rotor. The sandwich product preserves the grade structure of x.
+    ///
+    /// For a unit rotor R and a vector v: R.sandwich(v) rotates v.
+    /// For a unit rotor R and a bivector B: R.sandwich(B) rotates the plane B.
+    ///
+    /// The rotor should be normalized (R * ~R = 1) for this to be a pure rotation.
+    /// Non-unit rotors will also scale the result.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+    /// rotated = R.sandwich(e1)  # should equal e2
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn sandwich(&self, x: &Multivector) -> PyResult<Self> {
+        if self.dims != x.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: rotor is Cl({}) but operand is Cl({}); \
+                both must have the same dimension",
+                self.dims, x.dims
+            )));
+        }
+        // R * x * ~R
+        let rx = self.geometric_product(x)?;
+        let r_rev = self.reverse();
+        rx.geometric_product(&r_rev)
+    }
+
+    /// Alias for sandwich product. Common in robotics literature.
+    pub fn apply(&self, x: &Multivector) -> PyResult<Self> {
+        self.sandwich(x)
+    }
+
+    /// Check if this multivector is a valid rotor (unit versor).
+    ///
+    /// A rotor R satisfies R * ~R = 1 (within tolerance).
+    /// Returns true if this multivector is approximately a unit rotor.
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_rotor(&self, tol: f64) -> bool {
+        let norm_sq = self.norm_squared();
+        (norm_sq - 1.0).abs() <= tol
     }
 }
 
