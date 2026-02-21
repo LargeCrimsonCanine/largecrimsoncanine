@@ -9,7 +9,7 @@ pub use multivector::Multivector;
 ///
 /// Registers all types and functions exposed to Python.
 #[pymodule]
-fn largecrimsoncanine(_py: Python, m: &PyModule) -> PyResult<()> {
+fn largecrimsoncanine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Multivector>()?;
     Ok(())
 }
