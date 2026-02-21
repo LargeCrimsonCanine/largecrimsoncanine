@@ -2630,3 +2630,332 @@ def test_meet_join_duality():
 
     assert lhs.approx_eq(rhs)
 
+
+# =============================================================================
+# IS_BLADE TESTS
+# =============================================================================
+
+def test_is_blade_scalar():
+    """Scalars are blades (grade 0)."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.is_blade()
+
+
+def test_is_blade_vector():
+    """Vectors are blades (grade 1)."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.is_blade()
+
+
+def test_is_blade_bivector():
+    """Simple bivectors are blades (grade 2)."""
+    import largecrimsoncanine as lcc
+
+    # e12 is a simple bivector (blade)
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    assert B.is_blade()
+
+
+def test_is_blade_pseudoscalar():
+    """Pseudoscalar is a blade (highest grade)."""
+    import largecrimsoncanine as lcc
+
+    I = lcc.Multivector.pseudoscalar(3)
+    assert I.is_blade()
+
+
+def test_is_blade_mixed_grade_not_blade():
+    """Mixed-grade multivectors are not blades."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector is not a blade
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    mixed = s + v
+
+    assert not mixed.is_blade()
+
+
+def test_is_blade_rotor_not_blade():
+    """Rotors (scalar + bivector) are not blades."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotor has scalar and bivector parts
+    assert not R.is_blade()
+
+
+# =============================================================================
+# IS_VERSOR TESTS
+# =============================================================================
+
+def test_is_versor_vector():
+    """Vectors are versors (product of 1 vector)."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.is_versor()
+
+
+def test_is_versor_rotor():
+    """Rotors are versors (product of 2 vectors)."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.is_versor()
+
+
+def test_is_versor_bivector():
+    """Simple bivectors (e1*e2) are versors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    B = e1 * e2  # e12
+
+    assert B.is_versor()
+
+
+def test_is_versor_scalar():
+    """Non-zero scalars are versors."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(3.0, dims=3)
+    assert s.is_versor()
+
+
+def test_is_versor_zero_not_versor():
+    """Zero is not a versor."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert not z.is_versor()
+
+
+# =============================================================================
+# GRADES TESTS
+# =============================================================================
+
+def test_grades_scalar():
+    """Scalar has grade [0]."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.grades() == [0]
+
+
+def test_grades_vector():
+    """Vector has grade [1]."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.grades() == [1]
+
+
+def test_grades_bivector():
+    """Bivector has grade [2]."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    assert B.grades() == [2]
+
+
+def test_grades_rotor():
+    """Rotor has grades [0, 2]."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.grades() == [0, 2]
+
+
+def test_grades_mixed():
+    """Mixed multivector has multiple grades."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    mixed = s + v + B
+    assert mixed.grades() == [0, 1, 2]
+
+
+def test_grades_zero():
+    """Zero multivector has no grades."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.grades() == []
+
+
+# =============================================================================
+# MAX_GRADE / MIN_GRADE TESTS
+# =============================================================================
+
+def test_max_grade_scalar():
+    """Max grade of scalar is 0."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.max_grade() == 0
+
+
+def test_max_grade_vector():
+    """Max grade of vector is 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.max_grade() == 1
+
+
+def test_max_grade_pseudoscalar():
+    """Max grade of pseudoscalar equals dimension."""
+    import largecrimsoncanine as lcc
+
+    I = lcc.Multivector.pseudoscalar(3)
+    assert I.max_grade() == 3
+
+
+def test_max_grade_rotor():
+    """Max grade of rotor is 2."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.max_grade() == 2
+
+
+def test_max_grade_zero():
+    """Max grade of zero is None."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.max_grade() is None
+
+
+def test_min_grade_rotor():
+    """Min grade of rotor is 0."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.min_grade() == 0
+
+
+def test_min_grade_bivector():
+    """Min grade of bivector is 2."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    assert B.min_grade() == 2
+
+
+def test_min_grade_zero():
+    """Min grade of zero is None."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.min_grade() is None
+
+
+# =============================================================================
+# SLERP TESTS
+# =============================================================================
+
+def test_slerp_t_zero():
+    """slerp at t=0 returns first rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    R1 = lcc.Multivector.rotor_from_vectors(e1, e2)
+    R2 = lcc.Multivector.rotor_from_vectors(e1, e3)
+
+    result = R1.slerp(R2, 0.0)
+    assert result.approx_eq(R1)
+
+
+def test_slerp_t_one():
+    """slerp at t=1 returns second rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    R1 = lcc.Multivector.rotor_from_vectors(e1, e2)
+    R2 = lcc.Multivector.rotor_from_vectors(e1, e3)
+
+    result = R1.slerp(R2, 1.0)
+    assert result.approx_eq(R2)
+
+
+def test_slerp_midpoint():
+    """slerp at t=0.5 gives intermediate rotation."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # Identity rotor (no rotation)
+    R1 = lcc.Multivector.from_scalar(1.0, dims=3)
+    # 90 degree rotation
+    R2 = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Midpoint should be 45 degree rotation
+    R_mid = R1.slerp(R2, 0.5)
+
+    # Apply to e1 - should get 45 degree rotated vector
+    rotated = R_mid.sandwich(e1)
+
+    # At 45 degrees, e1 rotates to (1/sqrt(2), 1/sqrt(2), 0)
+    import math
+    expected = lcc.Multivector.from_vector([1/math.sqrt(2), 1/math.sqrt(2), 0.0])
+    assert rotated.approx_eq(expected)
+
+
+def test_slerp_preserves_unit_norm():
+    """slerp always produces unit rotors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    R1 = lcc.Multivector.rotor_from_vectors(e1, e2)
+    R2 = lcc.Multivector.rotor_from_vectors(e1, e3)
+
+    for t in [0.0, 0.25, 0.5, 0.75, 1.0]:
+        result = R1.slerp(R2, t)
+        assert abs(result.norm() - 1.0) < 1e-10, f"Failed at t={t}"
+
+
+def test_slerp_dimension_mismatch():
+    """slerp with mismatched dimensions raises."""
+    import largecrimsoncanine as lcc
+
+    R1 = lcc.Multivector.from_scalar(1.0, dims=2)
+    R2 = lcc.Multivector.from_scalar(1.0, dims=3)
+
+    with pytest.raises(ValueError):
+        R1.slerp(R2, 0.5)
+
