@@ -1792,3 +1792,250 @@ def test_clifford_conjugate_4d():
 
     assert conj.approx_eq(I4)  # Sign should be +1
 
+
+# =============================================================================
+# REFLECTION AND PROJECTION TESTS
+# =============================================================================
+
+
+def test_reflect_vector_across_perpendicular():
+    """Reflecting a vector across a perpendicular plane negates it."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # Reflect e1 across plane perpendicular to e1 (the yz-plane)
+    reflected = e1.reflect(e1)
+
+    # Should give -e1
+    assert reflected.approx_eq(-e1)
+
+
+def test_reflect_vector_parallel_to_plane():
+    """Reflecting a vector parallel to the mirror plane leaves it unchanged."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # Reflect e2 across plane perpendicular to e1 (the yz-plane)
+    # e2 lies in the yz-plane, so it should be unchanged
+    reflected = e2.reflect(e1)
+
+    assert reflected.approx_eq(e2)
+
+
+def test_reflect_diagonal_vector():
+    """Reflect a diagonal vector across a coordinate plane."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    # 45-degree vector
+    v = lcc.Multivector.from_vector([1.0, 1.0])
+
+    # Reflect across plane perpendicular to e1 (the y-axis)
+    reflected = v.reflect(e1)
+
+    # Component along e1 negates, component along e2 stays
+    expected = lcc.Multivector.from_vector([-1.0, 1.0])
+    assert reflected.approx_eq(expected)
+
+
+def test_reflect_twice_is_identity():
+    """Reflecting twice across the same plane returns the original."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    n = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+
+    double_reflected = v.reflect(n).reflect(n)
+
+    assert double_reflected.approx_eq(v)
+
+
+def test_reflect_preserves_norm():
+    """Reflection preserves the norm of a vector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    n = lcc.Multivector.from_vector([1.0, 2.0, 2.0])
+
+    reflected = v.reflect(n)
+
+    assert abs(v.norm() - reflected.norm()) < 1e-10
+
+
+def test_reflect_with_non_unit_normal():
+    """Reflection works with non-unit normal vectors."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    n = lcc.Multivector.from_vector([5.0, 0.0, 0.0])  # Non-unit, parallel to e1
+
+    reflected = e1.reflect(n)
+
+    # Should still give -e1
+    assert reflected.approx_eq(-e1)
+
+
+def test_reflect_dimension_mismatch():
+    """Reflection with mismatched dimensions should raise."""
+    import largecrimsoncanine as lcc
+    v2 = lcc.Multivector.from_vector([1.0, 0.0])
+    n3 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    with pytest.raises(ValueError):
+        v2.reflect(n3)
+
+
+def test_project_vector_onto_parallel():
+    """Projecting a vector onto a parallel vector gives the original."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    proj = v.project(e1)
+
+    assert proj.approx_eq(v)
+
+
+def test_project_vector_onto_perpendicular():
+    """Projecting a vector onto a perpendicular vector gives zero."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    proj = e1.project(e2)
+
+    zero = lcc.Multivector.zero(3)
+    assert proj.approx_eq(zero)
+
+
+def test_project_diagonal():
+    """Project a diagonal vector onto a basis vector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    proj = v.project(e1)
+
+    expected = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+    assert proj.approx_eq(expected)
+
+
+def test_reject_vector_from_parallel():
+    """Rejecting a vector from a parallel vector gives zero."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    rej = v.reject(e1)
+
+    zero = lcc.Multivector.zero(3)
+    assert rej.approx_eq(zero)
+
+
+def test_reject_vector_from_perpendicular():
+    """Rejecting a vector from a perpendicular vector gives the original."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    rej = e1.reject(e2)
+
+    assert rej.approx_eq(e1)
+
+
+def test_reject_diagonal():
+    """Reject a diagonal vector from a basis vector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    rej = v.reject(e1)
+
+    expected = lcc.Multivector.from_vector([0.0, 4.0, 0.0])
+    assert rej.approx_eq(expected)
+
+
+def test_project_plus_reject_equals_original():
+    """v.project(n) + v.reject(n) = v."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    n = lcc.Multivector.from_vector([1.0, 2.0, 2.0])
+
+    proj = v.project(n)
+    rej = v.reject(n)
+    reconstructed = proj + rej
+
+    assert reconstructed.approx_eq(v)
+
+
+def test_project_onto_bivector():
+    """Project a vector onto a bivector (plane)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    # xy-plane
+    e12 = e1 ^ e2
+
+    # Vector with all components
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+
+    # Project onto xy-plane: should keep x and y, remove z
+    proj = v.project(e12)
+
+    expected = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    assert proj.approx_eq(expected)
+
+
+def test_reject_from_bivector():
+    """Reject a vector from a bivector (plane)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # xy-plane
+    e12 = e1 ^ e2
+
+    # Vector with all components
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+
+    # Reject from xy-plane: should keep only z
+    rej = v.reject(e12)
+
+    expected = lcc.Multivector.from_vector([0.0, 0.0, 5.0])
+    assert rej.approx_eq(expected)
+
+
+def test_project_dimension_mismatch():
+    """Projection with mismatched dimensions should raise."""
+    import largecrimsoncanine as lcc
+    v2 = lcc.Multivector.from_vector([1.0, 0.0])
+    n3 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    with pytest.raises(ValueError):
+        v2.project(n3)
+
+
+def test_reflect_3d_arbitrary():
+    """Reflect a 3D vector across an arbitrary plane."""
+    import largecrimsoncanine as lcc
+
+    # Vector to reflect
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    # Normal to the plane (45 degrees between e1 and e2)
+    import math
+    cos45 = math.cos(math.pi / 4)
+    n = lcc.Multivector.from_vector([cos45, cos45, 0.0])
+
+    # Reflect
+    reflected = v.reflect(n)
+
+    # The plane x + y = 0 reflects [1,0,0] to [0,-1,0]
+    # (component parallel to n negates, perpendicular unchanged)
+    expected = lcc.Multivector.from_vector([0.0, -1.0, 0.0])
+    assert reflected.approx_eq(expected)
+

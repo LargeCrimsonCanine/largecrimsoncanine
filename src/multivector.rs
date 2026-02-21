@@ -892,6 +892,98 @@ impl Multivector {
     }
 
     // =========================================================================
+    // REFLECTION AND PROJECTION
+    // =========================================================================
+
+    /// Reflect this multivector across the hyperplane perpendicular to n.
+    ///
+    /// For a vector v and unit vector n, the reflection is: -n * v * n⁻¹.
+    /// This reflects v through the hyperplane orthogonal to n.
+    ///
+    /// If n is not a unit vector, the result is still a valid reflection
+    /// (the formula handles normalization via n⁻¹).
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// reflected = e1.reflect(e2)  # Reflects e1 across the yz-plane
+    /// # Result: e1 (unchanged, since e1 is parallel to the yz-plane normal)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn reflect(&self, n: &Multivector) -> PyResult<Self> {
+        if self.dims != n.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: operand is Cl({}) but mirror normal is Cl({}); \
+                both must have the same dimension",
+                self.dims, n.dims
+            )));
+        }
+        // Reflection formula: -n * x * n⁻¹
+        let n_inv = n.inverse()?;
+        let nx = n.geometric_product(self)?;
+        let nxn_inv = nx.geometric_product(&n_inv)?;
+        Ok(nxn_inv.__neg__())
+    }
+
+    /// Project this multivector onto a blade B.
+    ///
+    /// The projection of A onto B gives the component of A that lies
+    /// entirely within the subspace represented by B.
+    ///
+    /// Formula: (A ⌋ B) * B⁻¹ where ⌋ is left contraction.
+    ///
+    /// For vectors: v.project(n) gives the component of v parallel to n.
+    /// For bivectors: projects onto a plane.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 0.0])
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// proj = v.project(e1)  # Component along e1
+    /// # Result: 3.0*e1
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.4 [VERIFY]
+    pub fn project(&self, blade: &Multivector) -> PyResult<Self> {
+        if self.dims != blade.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: operand is Cl({}) but blade is Cl({}); \
+                both must have the same dimension",
+                self.dims, blade.dims
+            )));
+        }
+        // Projection formula: (A ⌋ B) * B⁻¹
+        let contraction = self.left_contraction(blade)?;
+        let blade_inv = blade.inverse()?;
+        contraction.geometric_product(&blade_inv)
+    }
+
+    /// Compute the rejection of this multivector from a blade B.
+    ///
+    /// The rejection is the component perpendicular to the subspace
+    /// represented by B. It satisfies: A = A.project(B) + A.reject(B).
+    ///
+    /// Formula: A - (A ⌋ B) * B⁻¹
+    ///
+    /// For vectors: v.reject(n) gives the component of v perpendicular to n.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 0.0])
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// rej = v.reject(e1)  # Component perpendicular to e1
+    /// # Result: 4.0*e2
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.4 [VERIFY]
+    pub fn reject(&self, blade: &Multivector) -> PyResult<Self> {
+        let proj = self.project(blade)?;
+        self.__sub__(&proj)
+    }
+
+    // =========================================================================
     // DUAL OPERATIONS
     // =========================================================================
 
