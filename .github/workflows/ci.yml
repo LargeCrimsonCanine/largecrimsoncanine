@@ -97,9 +97,11 @@ jobs:
 
   dependency-review:
     # Only run on PRs - reviews newly introduced dependencies for vulnerabilities
+    # Note: Requires Dependency Graph to be enabled in repo settings
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    continue-on-error: true  # Don't fail CI if Dependency Graph isn't enabled
     permissions:
       contents: read
       pull-requests: write
