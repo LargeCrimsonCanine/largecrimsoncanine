@@ -1,0 +1,22 @@
+[package]
+name = "largecrimsoncanine"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance geometric algebra for Python, built on a Rust backend"
+license = "MIT"
+repository = "https://github.com/LargeCrimsonCanine/largecrimsoncanine"
+
+[lib]
+name = "largecrimsoncanine"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+
+[dev-dependencies]
+approx = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+
