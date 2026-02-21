@@ -1046,6 +1046,145 @@ impl Multivector {
         let ps_inv = pseudoscalar.inverse()?;
         ps_inv.geometric_product(self)
     }
+
+    // =========================================================================
+    // EXPONENTIAL AND LOGARITHM
+    // =========================================================================
+
+    /// Compute the exponential of this multivector.
+    ///
+    /// For a pure bivector B (representing a rotation plane), the exponential
+    /// produces a rotor:
+    ///
+    /// `exp(B) = cos(|B|) + sin(|B|) * B/|B|`
+    ///
+    /// where |B| is the norm of the bivector. If B has norm θ/2, then exp(B)
+    /// is a rotor that performs rotation by angle θ.
+    ///
+    /// For scalars: exp(s) = e^s (the standard exponential).
+    ///
+    /// For general multivectors, this uses a Taylor series approximation.
+    /// The series converges for all multivectors, but may be slow for
+    /// large norms.
+    ///
+    /// Example:
+    /// ```text
+    /// import math
+    /// # Create a bivector for 90-degree rotation in xy-plane
+    /// e12 = Multivector.from_bivector([math.pi/4], dims=2)  # θ/2 = π/4
+    /// R = e12.exp()  # Rotor for 90-degree rotation
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn exp(&self) -> PyResult<Self> {
+        // Check if pure scalar
+        let scalar_part = self.grade(0)?;
+        let non_scalar = self.__sub__(&scalar_part)?;
+        let non_scalar_norm = non_scalar.norm();
+
+        if non_scalar_norm < 1e-14 {
+            // Pure scalar: exp(s) = e^s
+            let s = self.coeffs[0];
+            return Multivector::from_scalar(s.exp(), self.dims);
+        }
+
+        // Check if pure bivector (most common case for rotations)
+        let bivector_part = self.grade(2)?;
+        let remaining = non_scalar.__sub__(&bivector_part)?;
+        let remaining_norm = remaining.norm();
+
+        if remaining_norm < 1e-14 && scalar_part.norm() < 1e-14 {
+            // Pure bivector: exp(B) = cos(|B|) + sin(|B|) * B/|B|
+            let b_norm = bivector_part.norm();
+            if b_norm < 1e-14 {
+                // Zero bivector: exp(0) = 1
+                return Multivector::from_scalar(1.0, self.dims);
+            }
+            let cos_b = b_norm.cos();
+            let sin_b = b_norm.sin();
+            let b_unit = bivector_part.scale(1.0 / b_norm);
+            let scaled_b = b_unit.scale(sin_b);
+
+            let one = Multivector::from_scalar(cos_b, self.dims)?;
+            return one.__add__(&scaled_b);
+        }
+
+        // General case: Taylor series
+        // exp(A) = 1 + A + A²/2! + A³/3! + ...
+        let mut result = Multivector::from_scalar(1.0, self.dims)?;
+        let mut term = Multivector::from_scalar(1.0, self.dims)?;
+
+        for n in 1..50 {
+            term = term.geometric_product(self)?;
+            term = term.scale(1.0 / n as f64);
+            result = result.__add__(&term)?;
+
+            // Check convergence
+            if term.norm() < 1e-15 {
+                break;
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Compute the logarithm of this rotor.
+    ///
+    /// For a rotor R, returns a bivector B such that exp(B) = R.
+    ///
+    /// The rotor must be a unit rotor (R * ~R = 1). The result is a
+    /// bivector with norm equal to half the rotation angle.
+    ///
+    /// This is useful for interpolating rotations (SLERP) and
+    /// computing rotation velocities.
+    ///
+    /// Example:
+    /// ```text
+    /// # Create a rotor, then recover the bivector
+    /// e1 = Multivector.from_vector([1.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90-degree rotation
+    /// B = R.log()  # Should have |B| = π/4
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn log(&self) -> PyResult<Self> {
+        // Check if approximately unit rotor
+        let norm_sq = self.norm_squared();
+        if (norm_sq - 1.0).abs() > 1e-8 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "log requires a unit rotor (norm² = 1), but got norm² = {}; \
+                use normalized() first if needed",
+                norm_sq
+            )));
+        }
+
+        // Extract scalar and bivector parts
+        let scalar_part = self.grade(0)?;
+        let bivector_part = self.grade(2)?;
+
+        let s = scalar_part.coeffs[0];
+        let b_norm = bivector_part.norm();
+
+        if b_norm < 1e-14 {
+            // Nearly pure scalar rotor
+            if s > 0.0 {
+                // R ≈ 1, log(1) = 0
+                return Multivector::zero(self.dims);
+            } else {
+                // R ≈ -1, which is a 360° rotation
+                // The bivector direction is undefined, return zero
+                return Multivector::zero(self.dims);
+            }
+        }
+
+        // log(R) = log(cos(θ) + sin(θ)*B̂) = θ*B̂
+        // where θ = atan2(|B|, s)
+        let theta = b_norm.atan2(s);
+        let b_unit = bivector_part.scale(1.0 / b_norm);
+
+        Ok(b_unit.scale(theta))
+    }
 }
 
 // Rust-only methods (not exposed to Python)
