@@ -3240,3 +3240,245 @@ def test_cos_sin_identity():
 
     assert abs(c*c + s*s - 1.0) < 1e-10
 
+
+# =============================================================================
+# ROTATION_ANGLE TESTS
+# =============================================================================
+
+def test_rotation_angle_90_degrees():
+    """90-degree rotor has angle π/2."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    angle = R.rotation_angle()
+
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_rotation_angle_180_degrees():
+    """180-degree rotor has angle π."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([-1.0, 0.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    angle = R.rotation_angle()
+
+    assert abs(angle - math.pi) < 1e-10
+
+
+def test_rotation_angle_identity():
+    """Identity rotor has angle 0."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+    angle = R.rotation_angle()
+
+    assert abs(angle) < 1e-10
+
+
+def test_rotation_angle_from_exp():
+    """Rotor from exp has expected angle."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Create rotor with known angle
+    theta = 1.0  # radians
+    B = lcc.Multivector.from_bivector([theta / 2, 0.0, 0.0], dims=3)
+    R = B.exp()
+
+    angle = R.rotation_angle()
+    assert abs(angle - theta) < 1e-10
+
+
+def test_rotation_angle_non_rotor_raises():
+    """rotation_angle on non-rotor raises."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    with pytest.raises(ValueError):
+        v.rotation_angle()
+
+
+# =============================================================================
+# ROTATION_PLANE TESTS
+# =============================================================================
+
+def test_rotation_plane_xy():
+    """Rotation in xy-plane gives e12 bivector."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    plane = R.rotation_plane()
+
+    # Should be unit bivector in e12 direction
+    assert plane.grade(2).approx_eq(plane)  # pure bivector
+    assert abs(plane.norm() - 1.0) < 1e-10  # unit
+
+
+def test_rotation_plane_identity():
+    """Identity rotor gives zero bivector."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+    plane = R.rotation_plane()
+
+    assert plane.approx_eq(lcc.Multivector.zero(3))
+
+
+def test_rotation_plane_non_rotor_raises():
+    """rotation_plane on non-rotor raises."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    with pytest.raises(ValueError):
+        v.rotation_plane()
+
+
+# =============================================================================
+# CROSS PRODUCT TESTS
+# =============================================================================
+
+def test_cross_basis_vectors():
+    """e1 × e2 = e3 in 3D."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    result = e1.cross(e2)
+    assert result.approx_eq(e3)
+
+
+def test_cross_cyclic():
+    """Cross product is cyclic: e2 × e3 = e1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    assert e2.cross(e3).approx_eq(e1)
+    assert e3.cross(e1).approx_eq(e2)
+
+
+def test_cross_anticommutative():
+    """a × b = -b × a."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+
+    ab = a.cross(b)
+    ba = b.cross(a)
+
+    neg_ba = ba * (-1.0)
+    assert ab.approx_eq(neg_ba)
+
+
+def test_cross_parallel_is_zero():
+    """Cross product of parallel vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    w = lcc.Multivector.from_vector([2.0, 4.0, 6.0])
+
+    result = v.cross(w)
+    assert result.approx_eq(lcc.Multivector.zero(3))
+
+
+def test_cross_not_3d_raises():
+    """Cross product in non-3D raises."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    w = lcc.Multivector.from_vector([3.0, 4.0])
+
+    with pytest.raises(ValueError):
+        v.cross(w)
+
+
+def test_cross_magnitude():
+    """Cross product magnitude equals |a||b|sin(θ)."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+
+    cross = a.cross(b)
+    sin_theta = a.sin_angle(b)
+
+    expected_magnitude = a.norm() * b.norm() * sin_theta
+    assert abs(cross.norm() - expected_magnitude) < 1e-10
+
+
+# =============================================================================
+# AXIS_ANGLE TESTS
+# =============================================================================
+
+def test_axis_angle_z_rotation():
+    """Rotation around z-axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    # 90-degree rotation from e1 to e2 is around e3
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    axis, angle = R.axis_angle()
+
+    assert abs(angle - math.pi / 2) < 1e-10
+    # Axis should be ±e3
+    assert axis.is_parallel(e3)
+
+
+def test_axis_angle_roundtrip():
+    """Create rotor from axis-angle, extract, compare."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Create a rotor with known axis and angle
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    axis, angle = R.axis_angle()
+
+    # The rotation should transform e1 to e2
+    rotated = R.sandwich(e1)
+    assert rotated.approx_eq(e2)
+
+
+def test_axis_angle_identity_raises():
+    """axis_angle on identity rotor raises (no unique axis)."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+
+    with pytest.raises(ValueError):
+        R.axis_angle()
+
+
+def test_axis_angle_not_3d_raises():
+    """axis_angle in non-3D raises."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=2)
+
+    with pytest.raises(ValueError):
+        R.axis_angle()
+
