@@ -1298,6 +1298,84 @@ impl Multivector {
         min_g
     }
 
+    /// Check if a specific grade has non-zero components.
+    ///
+    /// Returns true if there is at least one non-zero coefficient at grade k.
+    pub fn has_grade(&self, k: usize) -> bool {
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c != 0.0 && algebra::blade_grade(i) == k {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return the grade if this is a pure k-vector, None otherwise.
+    ///
+    /// A pure k-vector has all its non-zero components at a single grade.
+    /// Returns None for zero multivectors or mixed-grade multivectors.
+    pub fn pure_grade(&self) -> Option<usize> {
+        let grades = self.grades();
+        if grades.len() == 1 {
+            Some(grades[0])
+        } else {
+            None
+        }
+    }
+
+    /// Check if this multivector is a scalar (grade 0 only).
+    pub fn is_scalar(&self) -> bool {
+        self.pure_grade() == Some(0)
+    }
+
+    /// Check if this multivector is a vector (grade 1 only).
+    pub fn is_vector(&self) -> bool {
+        self.pure_grade() == Some(1)
+    }
+
+    /// Check if this multivector is a bivector (grade 2 only).
+    pub fn is_bivector(&self) -> bool {
+        self.pure_grade() == Some(2)
+    }
+
+    /// Check if this multivector is a trivector (grade 3 only).
+    pub fn is_trivector(&self) -> bool {
+        self.pure_grade() == Some(3)
+    }
+
+    /// Check if this multivector is the pseudoscalar (highest grade only).
+    pub fn is_pseudoscalar(&self) -> bool {
+        self.pure_grade() == Some(self.dims)
+    }
+
+    /// Check if this multivector is zero (all coefficients are zero).
+    pub fn is_zero(&self) -> bool {
+        self.coeffs.iter().all(|&c| c == 0.0)
+    }
+
+    /// Return the non-zero components as a list of (index, coefficient) pairs.
+    ///
+    /// The index is the basis blade index (binary encoding).
+    /// Use this for sparse iteration over multivector components.
+    pub fn components(&self) -> Vec<(usize, f64)> {
+        self.coeffs
+            .iter()
+            .enumerate()
+            .filter(|(_, &c)| c != 0.0)
+            .map(|(i, &c)| (i, c))
+            .collect()
+    }
+
+    /// Return the indices of non-zero basis blades.
+    pub fn blade_indices(&self) -> Vec<usize> {
+        self.coeffs
+            .iter()
+            .enumerate()
+            .filter(|(_, &c)| c != 0.0)
+            .map(|(i, _)| i)
+            .collect()
+    }
+
     /// Spherical linear interpolation between two unit rotors.
     ///
     /// Interpolates from self (at t=0) to other (at t=1) along the
