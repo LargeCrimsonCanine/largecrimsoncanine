@@ -11,6 +11,9 @@ use crate::algebra;
 /// Basis blade ordering follows the canonical binary representation:
 /// index 0 = scalar, index 1 = e1, index 2 = e2, index 3 = e12, etc.
 ///
+/// Current limitation: assumes Euclidean metric (all basis vectors square to +1).
+/// Mixed-signature algebra Cl(p,q,r) support is planned. See ARCHITECTURE.md.
+///
 /// Reference: Dorst et al. ch.2 [VERIFY]
 #[pyclass]
 #[derive(Debug, Clone)]
@@ -30,13 +33,24 @@ impl Multivector {
     /// The length of coeffs must be a power of 2.
     /// coeffs[0] is the scalar part, coeffs[1] is e1, coeffs[2] is e2,
     /// coeffs[3] is e12, and so on.
+    ///
+    /// # Errors
+    /// Returns an error if coeffs is empty or its length is not a power of 2.
     #[new]
     pub fn new(coeffs: Vec<f64>) -> PyResult<Self> {
         let len = coeffs.len();
-        if len == 0 || (len & (len - 1)) != 0 {
+        if len == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "coeffs length must be a power of 2",
+                "coeffs must not be empty",
             ));
+        }
+        if len & (len - 1) != 0 {
+            let lower = 1usize << (usize::BITS - len.leading_zeros() - 1);
+            let upper = lower << 1;
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "coeffs length must be a power of 2 (got {}, expected {} or {})",
+                len, lower, upper
+            )));
         }
         let dims = (len as f64).log2() as usize;
         Ok(Multivector { coeffs, dims })
@@ -52,12 +66,16 @@ impl Multivector {
     /// Returns a new multivector containing only the grade-k components.
     /// Components not of grade k are zeroed.
     ///
+    /// # Errors
+    /// Returns an error if k exceeds the dimension of the algebra.
+    ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn grade(&self, k: usize) -> PyResult<Self> {
         if k > self.dims {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "grade exceeds dimension",
-            ));
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "grade {} exceeds algebra dimension {} (max grade is {})",
+                k, self.dims, self.dims
+            )));
         }
         let mut result = vec![0.0f64; self.coeffs.len()];
         for (i, &c) in self.coeffs.iter().enumerate() {
@@ -73,15 +91,15 @@ impl Multivector {
     /// The geometric product is the fundamental operation of Clifford algebra.
     /// For orthonormal basis vectors e_i: e_i * e_i = 1, e_i * e_j = -e_j * e_i for i != j.
     ///
-    /// This implementation assumes a Euclidean metric (all basis vectors square to +1).
-    /// Support for mixed-signature algebras is planned.
+    /// Both multivectors must have the same dimension.
     ///
     /// Reference: Dorst et al. ch.3 [VERIFY]
     pub fn geometric_product(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "multivectors must have the same dimension",
-            ));
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left is Cl({}), right is Cl({})",
+                self.dims, other.dims
+            )));
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
@@ -104,12 +122,15 @@ impl Multivector {
     /// and grade-s multivector is a grade-(r+s) multivector.
     /// It is zero if any basis vector appears more than once.
     ///
+    /// Both multivectors must have the same dimension.
+    ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn outer_product(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                "multivectors must have the same dimension",
-            ));
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left is Cl({}), right is Cl({})",
+                self.dims, other.dims
+            )));
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
