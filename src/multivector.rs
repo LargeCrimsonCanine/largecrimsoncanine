@@ -346,6 +346,7 @@ impl Multivector {
     /// Return a normalized copy of this multivector (unit norm).
     ///
     /// Returns None if the norm is zero (cannot normalize).
+    /// In Python, this returns None; use `normalized()` if you prefer an exception.
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn normalize(&self) -> Option<Self> {
@@ -359,7 +360,10 @@ impl Multivector {
 
     /// Return a normalized copy, or raise an error if norm is zero.
     ///
-    /// This is a Python-friendly version that raises ValueError instead of returning None.
+    /// This is the primary normalization method for Python users.
+    /// Raises ValueError if the multivector has zero norm.
+    ///
+    /// For Rust callers who prefer Option semantics, use `normalize()` instead.
     pub fn normalized(&self) -> PyResult<Self> {
         self.normalize().ok_or_else(|| {
             pyo3::exceptions::PyValueError::new_err("cannot normalize zero multivector")
