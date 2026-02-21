@@ -1,5 +1,5 @@
-use pyo3::prelude::*;
 use crate::algebra;
+use pyo3::prelude::*;
 
 /// A multivector in the Clifford algebra Cl(n).
 ///
@@ -77,11 +77,14 @@ impl Multivector {
     pub fn zero(dims: usize) -> PyResult<Self> {
         if dims == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "dimension must be at least 1"
+                "dimension must be at least 1",
             ));
         }
         let size = 1usize << dims;
-        Ok(Multivector { coeffs: vec![0.0; size], dims })
+        Ok(Multivector {
+            coeffs: vec![0.0; size],
+            dims,
+        })
     }
 
     /// Create a scalar (grade-0) multivector.
@@ -94,7 +97,7 @@ impl Multivector {
     pub fn from_scalar(value: f64, dims: usize) -> PyResult<Self> {
         if dims == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "dimension must be at least 1"
+                "dimension must be at least 1",
             ));
         }
         let size = 1usize << dims;
@@ -116,7 +119,7 @@ impl Multivector {
         let dims = coords.len();
         if dims == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "coords must not be empty; provide at least one coordinate"
+                "coords must not be empty; provide at least one coordinate",
             ));
         }
         let size = 1usize << dims;
@@ -139,7 +142,7 @@ impl Multivector {
     pub fn basis(index: usize, dims: usize) -> PyResult<Self> {
         if dims == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "dimension must be at least 1"
+                "dimension must be at least 1",
             ));
         }
         if index == 0 || index > dims {
@@ -168,7 +171,7 @@ impl Multivector {
     pub fn pseudoscalar(dims: usize) -> PyResult<Self> {
         if dims == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "dimension must be at least 1"
+                "dimension must be at least 1",
             ));
         }
         let size = 1usize << dims;
@@ -198,7 +201,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.7 [VERIFY]
     #[staticmethod]
-    pub fn rotor_from_vectors(a: PyRef<'_, Multivector>, b: PyRef<'_, Multivector>) -> PyResult<Self> {
+    pub fn rotor_from_vectors(
+        a: PyRef<'_, Multivector>,
+        b: PyRef<'_, Multivector>,
+    ) -> PyResult<Self> {
         if a.dims != b.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
                 "dimension mismatch: first vector is Cl({}) but second vector is Cl({}); \
@@ -210,12 +216,12 @@ impl Multivector {
         // Normalize both vectors
         let a_norm = a.normalize().ok_or_else(|| {
             pyo3::exceptions::PyValueError::new_err(
-                "first vector has zero norm; cannot create rotor from zero vector"
+                "first vector has zero norm; cannot create rotor from zero vector",
             )
         })?;
         let b_norm = b.normalize().ok_or_else(|| {
             pyo3::exceptions::PyValueError::new_err(
-                "second vector has zero norm; cannot create rotor from zero vector"
+                "second vector has zero norm; cannot create rotor from zero vector",
             )
         })?;
 
@@ -244,7 +250,7 @@ impl Multivector {
             // Rotor for 180° rotation: R = perp * â (any perpendicular vector works)
             let perp_norm = perp.normalize().ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(
-                    "failed to create perpendicular vector for anti-parallel case"
+                    "failed to create perpendicular vector for anti-parallel case",
                 )
             })?;
             perp_norm.geometric_product(&a_norm)
@@ -269,7 +275,7 @@ impl Multivector {
     pub fn from_bivector(components: Vec<f64>, dims: usize) -> PyResult<Self> {
         if dims < 2 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "dimension must be at least 2 for bivectors"
+                "dimension must be at least 2 for bivectors",
             ));
         }
         // Number of grade-2 blades is C(n, 2) = n*(n-1)/2
@@ -278,7 +284,9 @@ impl Multivector {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
                 "expected {} bivector components for Cl({}) (got {}); \
                 components are [e12, e13, e23, ...] in lexicographic order",
-                expected_len, dims, components.len()
+                expected_len,
+                dims,
+                components.len()
             )));
         }
         let size = 1usize << dims;
@@ -318,7 +326,10 @@ impl Multivector {
                 result[i] = c;
             }
         }
-        Ok(Multivector { coeffs: result, dims: self.dims })
+        Ok(Multivector {
+            coeffs: result,
+            dims: self.dims,
+        })
     }
 
     /// Compute the geometric product of two multivectors.
@@ -341,15 +352,22 @@ impl Multivector {
         let mut result = vec![0.0f64; size];
 
         for (i, &a) in self.coeffs.iter().enumerate() {
-            if a == 0.0 { continue; }
+            if a == 0.0 {
+                continue;
+            }
             for (j, &b) in other.coeffs.iter().enumerate() {
-                if b == 0.0 { continue; }
+                if b == 0.0 {
+                    continue;
+                }
                 let (blade, sign) = algebra::blade_product(i, j);
                 result[blade] += sign * a * b;
             }
         }
 
-        Ok(Multivector { coeffs: result, dims: self.dims })
+        Ok(Multivector {
+            coeffs: result,
+            dims: self.dims,
+        })
     }
 
     /// Alias for geometric_product.
@@ -378,17 +396,26 @@ impl Multivector {
         let mut result = vec![0.0f64; size];
 
         for (i, &a) in self.coeffs.iter().enumerate() {
-            if a == 0.0 { continue; }
+            if a == 0.0 {
+                continue;
+            }
             for (j, &b) in other.coeffs.iter().enumerate() {
-                if b == 0.0 { continue; }
+                if b == 0.0 {
+                    continue;
+                }
                 // Outer product is zero when blades share a basis vector.
-                if i & j != 0 { continue; }
+                if i & j != 0 {
+                    continue;
+                }
                 let (blade, sign) = algebra::blade_product(i, j);
                 result[blade] += sign * a * b;
             }
         }
 
-        Ok(Multivector { coeffs: result, dims: self.dims })
+        Ok(Multivector {
+            coeffs: result,
+            dims: self.dims,
+        })
     }
 
     /// Alias for outer_product (wedge product).
@@ -419,15 +446,23 @@ impl Multivector {
         let mut result = vec![0.0f64; size];
 
         for (i, &a) in self.coeffs.iter().enumerate() {
-            if a == 0.0 { continue; }
+            if a == 0.0 {
+                continue;
+            }
             let grade_a = algebra::blade_grade(i);
             for (j, &b) in other.coeffs.iter().enumerate() {
-                if b == 0.0 { continue; }
+                if b == 0.0 {
+                    continue;
+                }
                 let grade_b = algebra::blade_grade(j);
                 // Left contraction is zero when grade(A) > grade(B)
-                if grade_a > grade_b { continue; }
+                if grade_a > grade_b {
+                    continue;
+                }
                 // Left contraction requires A ⊆ B (all basis vectors in A appear in B)
-                if (i & j) != i { continue; }
+                if (i & j) != i {
+                    continue;
+                }
                 let (blade, sign) = algebra::blade_product(i, j);
                 let result_grade = algebra::blade_grade(blade);
                 // Only keep the grade (s-r) component
@@ -437,7 +472,10 @@ impl Multivector {
             }
         }
 
-        Ok(Multivector { coeffs: result, dims: self.dims })
+        Ok(Multivector {
+            coeffs: result,
+            dims: self.dims,
+        })
     }
 
     /// Alias for left_contraction.
@@ -448,6 +486,200 @@ impl Multivector {
     /// Short alias for left_contraction.
     pub fn lc(&self, other: &Multivector) -> PyResult<Self> {
         self.left_contraction(other)
+    }
+
+    /// Compute the right contraction of two multivectors.
+    ///
+    /// The right contraction A ⌊ B is the "dual" of left contraction.
+    /// For blades of grade r and s: A_r ⌊ B_s = ⟨A_r B_s⟩_{r-s} if r >= s, else 0.
+    ///
+    /// While left contraction (A ⌋ B) asks "how much of B is along A",
+    /// right contraction (A ⌊ B) asks "how much of A is along B".
+    ///
+    /// Both multivectors must have the same dimension.
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn right_contraction(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+        let size = self.coeffs.len();
+        let mut result = vec![0.0f64; size];
+
+        for (i, &a) in self.coeffs.iter().enumerate() {
+            if a == 0.0 {
+                continue;
+            }
+            let grade_a = algebra::blade_grade(i);
+            for (j, &b) in other.coeffs.iter().enumerate() {
+                if b == 0.0 {
+                    continue;
+                }
+                let grade_b = algebra::blade_grade(j);
+                // Right contraction is zero when grade(A) < grade(B)
+                if grade_a < grade_b {
+                    continue;
+                }
+                // Right contraction requires B ⊆ A (all basis vectors in B appear in A)
+                if (i & j) != j {
+                    continue;
+                }
+                let (blade, sign) = algebra::blade_product(i, j);
+                let result_grade = algebra::blade_grade(blade);
+                // Only keep the grade (r-s) component
+                if result_grade == grade_a - grade_b {
+                    result[blade] += sign * a * b;
+                }
+            }
+        }
+
+        Ok(Multivector {
+            coeffs: result,
+            dims: self.dims,
+        })
+    }
+
+    /// Short alias for right_contraction.
+    pub fn rc(&self, other: &Multivector) -> PyResult<Self> {
+        self.right_contraction(other)
+    }
+
+    /// Compute the scalar product of two multivectors.
+    ///
+    /// The scalar product extracts only the scalar (grade-0) part of the
+    /// geometric product: A ∗ B = ⟨A B⟩₀.
+    ///
+    /// This is a symmetric bilinear form. For vectors, it equals the dot product.
+    /// For general multivectors, it measures the "overlap" between them.
+    ///
+    /// Returns a scalar multivector (only grade-0 component non-zero).
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn scalar_product(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        let mut scalar = 0.0f64;
+
+        for (i, &a) in self.coeffs.iter().enumerate() {
+            if a == 0.0 {
+                continue;
+            }
+            for (j, &b) in other.coeffs.iter().enumerate() {
+                if b == 0.0 {
+                    continue;
+                }
+                let (blade, sign) = algebra::blade_product(i, j);
+                // Only accumulate scalar part (blade index 0)
+                if blade == 0 {
+                    scalar += sign * a * b;
+                }
+            }
+        }
+
+        Multivector::from_scalar(scalar, self.dims)
+    }
+
+    /// Compute the commutator product of two multivectors.
+    ///
+    /// The commutator (also called the antisymmetric product) is defined as:
+    /// [A, B] = (A * B - B * A) / 2
+    ///
+    /// It measures the "non-commutativity" of A and B. For commuting elements,
+    /// the commutator is zero.
+    ///
+    /// The commutator of two vectors gives their wedge product.
+    /// The commutator of two bivectors gives another bivector.
+    ///
+    /// Reference: Dorst et al. ch.6 [VERIFY]
+    pub fn commutator(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+        let ab = self.geometric_product(other)?;
+        let ba = other.geometric_product(self)?;
+        let diff = ab.__sub__(&ba)?;
+        Ok(diff.scale(0.5))
+    }
+
+    /// Compute the anticommutator product of two multivectors.
+    ///
+    /// The anticommutator (also called the symmetric product) is defined as:
+    /// {A, B} = (A * B + B * A) / 2
+    ///
+    /// It extracts the symmetric part of the geometric product.
+    ///
+    /// Reference: Dorst et al. ch.6 [VERIFY]
+    pub fn anticommutator(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+        let ab = self.geometric_product(other)?;
+        let ba = other.geometric_product(self)?;
+        let sum = ab.__add__(&ba)?;
+        Ok(sum.scale(0.5))
+    }
+
+    /// Short alias for commutator (cross product notation).
+    pub fn x(&self, other: &Multivector) -> PyResult<Self> {
+        self.commutator(other)
+    }
+
+    /// Compute the regressive product (meet) of two multivectors.
+    ///
+    /// The regressive product A ∨ B is the dual of the outer product:
+    /// A ∨ B = (A* ∧ B*)*
+    ///
+    /// It computes the "meet" (intersection) of the subspaces represented
+    /// by A and B. For example, the meet of two planes gives their line
+    /// of intersection.
+    ///
+    /// Reference: Dorst et al. ch.5 [VERIFY]
+    pub fn regressive(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+        // A ∨ B = (A* ∧ B*)*
+        let a_dual = self.dual()?;
+        let b_dual = other.dual()?;
+        let wedge = a_dual.outer_product(&b_dual)?;
+        wedge.undual()
+    }
+
+    /// Alias for regressive product.
+    pub fn meet(&self, other: &Multivector) -> PyResult<Self> {
+        self.regressive(other)
+    }
+
+    /// Short alias for regressive (wedge symbol notation: ∨).
+    pub fn vee(&self, other: &Multivector) -> PyResult<Self> {
+        self.regressive(other)
+    }
+
+    /// Alias for outer product, for symmetry with meet.
+    pub fn join(&self, other: &Multivector) -> PyResult<Self> {
+        self.outer_product(other)
     }
 
     /// Return the coefficient array as a Python list.
@@ -463,7 +695,9 @@ impl Multivector {
     pub fn __str__(&self) -> String {
         let mut parts = Vec::new();
         for (i, &c) in self.coeffs.iter().enumerate() {
-            if c == 0.0 { continue; }
+            if c == 0.0 {
+                continue;
+            }
             let blade_name = Self::blade_name(i);
             if blade_name == "1" {
                 parts.push(format!("{}", c));
@@ -488,10 +722,14 @@ impl Multivector {
         let len = self.coeffs.len() as isize;
         let idx = if index < 0 { len + index } else { index };
         if idx < 0 || idx >= len {
-            Err(pyo3::exceptions::PyIndexError::new_err(
-                format!("index {} out of range for {} coefficients \
-                (valid range: 0 to {}, or -{} to -1)", index, len, len - 1, len)
-            ))
+            Err(pyo3::exceptions::PyIndexError::new_err(format!(
+                "index {} out of range for {} coefficients \
+                (valid range: 0 to {}, or -{} to -1)",
+                index,
+                len,
+                len - 1,
+                len
+            )))
         } else {
             Ok(self.coeffs[idx as usize])
         }
@@ -505,7 +743,7 @@ impl Multivector {
             Ok(self.scale(scalar))
         } else {
             Err(pyo3::exceptions::PyTypeError::new_err(
-                "unsupported operand type for *: expected Multivector or float"
+                "unsupported operand type for *: expected Multivector or float",
             ))
         }
     }
@@ -516,7 +754,7 @@ impl Multivector {
             Ok(self.scale(scalar))
         } else {
             Err(pyo3::exceptions::PyTypeError::new_err(
-                "unsupported operand type for *: expected float"
+                "unsupported operand type for *: expected float",
             ))
         }
     }
@@ -528,14 +766,14 @@ impl Multivector {
         } else if let Ok(scalar) = other.extract::<f64>() {
             if scalar == 0.0 {
                 Err(pyo3::exceptions::PyZeroDivisionError::new_err(
-                    "cannot divide multivector by zero"
+                    "cannot divide multivector by zero",
                 ))
             } else {
                 Ok(self.scale(1.0 / scalar))
             }
         } else {
             Err(pyo3::exceptions::PyTypeError::new_err(
-                "unsupported operand type for /: expected Multivector or float"
+                "unsupported operand type for /: expected Multivector or float",
             ))
         }
     }
@@ -560,11 +798,16 @@ impl Multivector {
                 self.dims, other.dims
             )));
         }
-        let coeffs: Vec<f64> = self.coeffs.iter()
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
             .zip(other.coeffs.iter())
             .map(|(a, b)| a + b)
             .collect();
-        Ok(Multivector { coeffs, dims: self.dims })
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+        })
     }
 
     /// Subtract two multivectors component-wise.
@@ -578,23 +821,34 @@ impl Multivector {
                 self.dims, other.dims
             )));
         }
-        let coeffs: Vec<f64> = self.coeffs.iter()
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
             .zip(other.coeffs.iter())
             .map(|(a, b)| a - b)
             .collect();
-        Ok(Multivector { coeffs, dims: self.dims })
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+        })
     }
 
     /// Negate a multivector (flip sign of all coefficients).
     pub fn __neg__(&self) -> Self {
         let coeffs: Vec<f64> = self.coeffs.iter().map(|c| -c).collect();
-        Multivector { coeffs, dims: self.dims }
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
     }
 
     /// Multiply all coefficients by a scalar.
     pub fn scale(&self, scalar: f64) -> Self {
         let coeffs: Vec<f64> = self.coeffs.iter().map(|c| c * scalar).collect();
-        Multivector { coeffs, dims: self.dims }
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
     }
 
     /// Check equality of two multivectors.
@@ -613,7 +867,8 @@ impl Multivector {
         if self.dims != other.dims {
             return false;
         }
-        self.coeffs.iter()
+        self.coeffs
+            .iter()
             .zip(other.coeffs.iter())
             .all(|(a, b)| (a - b).abs() <= tol)
     }
@@ -629,14 +884,19 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn reverse(&self) -> Self {
-        let coeffs: Vec<f64> = self.coeffs.iter()
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
             .enumerate()
             .map(|(i, &c)| {
                 let grade = algebra::blade_grade(i);
                 c * algebra::reverse_sign(grade)
             })
             .collect();
-        Multivector { coeffs, dims: self.dims }
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
     }
 
     /// Alias for reverse, using the tilde notation common in GA literature.
@@ -660,14 +920,19 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn grade_involution(&self) -> Self {
-        let coeffs: Vec<f64> = self.coeffs.iter()
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
             .enumerate()
             .map(|(i, &c)| {
                 let grade = algebra::blade_grade(i);
                 c * algebra::grade_involution_sign(grade)
             })
             .collect();
-        Multivector { coeffs, dims: self.dims }
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
     }
 
     /// Alias for grade_involution (hat notation).
@@ -695,14 +960,19 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn clifford_conjugate(&self) -> Self {
-        let coeffs: Vec<f64> = self.coeffs.iter()
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
             .enumerate()
             .map(|(i, &c)| {
                 let grade = algebra::blade_grade(i);
                 c * algebra::clifford_conjugate_sign(grade)
             })
             .collect();
-        Multivector { coeffs, dims: self.dims }
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
     }
 
     /// Alias for clifford_conjugate (dagger notation).
@@ -718,11 +988,16 @@ impl Multivector {
     /// Rotors are always even-grade multivectors.
     pub fn even(&self) -> Self {
         let inv = self.grade_involution();
-        let sum = self.coeffs.iter()
+        let sum = self
+            .coeffs
+            .iter()
             .zip(inv.coeffs.iter())
             .map(|(a, b)| (a + b) / 2.0)
             .collect();
-        Multivector { coeffs: sum, dims: self.dims }
+        Multivector {
+            coeffs: sum,
+            dims: self.dims,
+        }
     }
 
     /// Extract the odd-grade part of this multivector.
@@ -731,11 +1006,16 @@ impl Multivector {
     /// Computed as (A - Â) / 2 where Â is the grade involution.
     pub fn odd(&self) -> Self {
         let inv = self.grade_involution();
-        let sum = self.coeffs.iter()
+        let sum = self
+            .coeffs
+            .iter()
             .zip(inv.coeffs.iter())
             .map(|(a, b)| (a - b) / 2.0)
             .collect();
-        Multivector { coeffs: sum, dims: self.dims }
+        Multivector {
+            coeffs: sum,
+            dims: self.dims,
+        }
     }
 
     /// Compute the squared norm of this multivector.
@@ -752,9 +1032,13 @@ impl Multivector {
         let mut scalar = 0.0f64;
 
         for (i, &a) in self.coeffs.iter().enumerate() {
-            if a == 0.0 { continue; }
+            if a == 0.0 {
+                continue;
+            }
             for (j, &b) in rev.coeffs.iter().enumerate() {
-                if b == 0.0 { continue; }
+                if b == 0.0 {
+                    continue;
+                }
                 let (blade, sign) = algebra::blade_product(i, j);
                 // Only accumulate scalar part (blade index 0)
                 if blade == 0 {
@@ -786,7 +1070,7 @@ impl Multivector {
         if n == 0.0 {
             Err(pyo3::exceptions::PyValueError::new_err(
                 "cannot normalize zero multivector; normalization requires non-zero norm \
-                (check that your multivector has at least one non-zero coefficient)"
+                (check that your multivector has at least one non-zero coefficient)",
             ))
         } else {
             Ok(self.scale(1.0 / n))
@@ -816,7 +1100,7 @@ impl Multivector {
         if norm_sq == 0.0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
                 "cannot invert multivector with zero norm; \
-                only non-null blades and versors are invertible"
+                only non-null blades and versors are invertible",
             ));
         }
         // A⁻¹ = Ã / (A * Ã) = Ã / norm_squared
@@ -1225,4 +1509,3 @@ impl Multivector {
         name
     }
 }
-
