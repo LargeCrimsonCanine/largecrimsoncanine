@@ -32,6 +32,50 @@ LCC implements the Clifford algebra Cl(p,q,r) framework. The core mathematical o
 
 Current status and known limitations are documented in CHANGELOG.md.
 
+## Branch and Worktree Workflow
+
+main is protected. nothing goes directly to main. all work happens on branches via pull requests.
+
+**Branch naming:**
+- `feat/description` — new operations or capabilities
+- `fix/description` — bug fixes
+- `docs/description` — documentation only
+- `perf/description` — performance improvements
+- `chore/description` — infrastructure, tooling, CI
+
+**Standard branch workflow:**
+```bash
+# Create a branch for your work
+git checkout -b feat/inner-product
+
+# Do your work, commit regularly with clear messages
+git commit -m "Add inner product for grade-1 multivectors"
+
+# Push and open a PR against main
+git push origin feat/inner-product
+```
+
+**Worktree workflow (for parallel workstreams):**
+
+If you are running as a Claude Code agent and need to work in parallel with other agents, use worktrees to avoid interference:
+
+```bash
+# Create a worktree for isolated work
+claude --worktree feat/inner-product
+
+# Or manually
+git worktree add .worktrees/inner-product -b feat/inner-product
+```
+
+Each worktree gets its own branch and working directory. Agents in separate worktrees cannot interfere with each other. This is the recommended approach for large batched changes — split the work across multiple agents, each in their own worktree, each opening their own PR.
+
+**Commit messages:**
+- Present tense: "Add inner product" not "Added inner product"
+- Specific: name the operation or file
+- No vague messages like "fix bug" or "update code"
+
+**Before opening a PR, check CONTRIBUTING.md for the full checklist.**
+
 ## Getting Started
 
 ```bash
