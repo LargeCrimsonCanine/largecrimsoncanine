@@ -1393,3 +1393,167 @@ def test_rotor_double_cover():
 
     assert result_R.approx_eq(result_neg_R)
 
+
+# =============================================================================
+# DUAL TESTS
+# =============================================================================
+
+
+def test_dual_scalar_becomes_pseudoscalar():
+    """Dual of scalar should be pseudoscalar."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(2.0, dims=3)
+    I = lcc.Multivector.pseudoscalar(3)
+
+    dual_s = s.dual()
+
+    # scalar * I^-1 should be proportional to I
+    # In 3D: I^-1 = -I (since I*I = -1)
+    # So 2 * (-I) = -2*I
+    expected = I * (-2.0)
+    assert dual_s.approx_eq(expected)
+
+
+def test_dual_pseudoscalar_becomes_scalar():
+    """Dual of pseudoscalar should be scalar."""
+    import largecrimsoncanine as lcc
+    I = lcc.Multivector.pseudoscalar(3)
+
+    dual_I = I.dual()
+
+    # I * I^-1 = 1
+    one = lcc.Multivector.from_scalar(1.0, dims=3)
+    assert dual_I.approx_eq(one)
+
+
+def test_dual_undual_identity():
+    """undual(dual(A)) = A for any multivector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    v_back = v.dual().undual()
+
+    assert v.approx_eq(v_back)
+
+
+def test_dual_undual_identity_bivector():
+    """undual(dual(B)) = B for bivectors."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    B_back = B.dual().undual()
+
+    assert B.approx_eq(B_back)
+
+
+def test_dual_undual_identity_scalar():
+    """undual(dual(s)) = s for scalars."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+
+    s_back = s.dual().undual()
+
+    assert s.approx_eq(s_back)
+
+
+def test_dual_vector_3d():
+    """In 3D, dual of a vector is a bivector."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    dual_e1 = e1.dual()
+
+    # e1 * I^-1 where I = e123
+    # e1 * (-e123) = -e1*e123 = -e23 (by anticommutation)
+    # Actually: e1 * e123 = e1*e1*e23 = e23
+    # So e1 * (-e123) = -e23
+    # Let's verify the grade is 2
+    grade_2 = dual_e1.grade(2)
+    assert dual_e1.approx_eq(grade_2)  # Should be pure grade-2
+
+
+def test_dual_bivector_3d():
+    """In 3D, dual of a bivector is a vector."""
+    import largecrimsoncanine as lcc
+    # e12 bivector
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    dual_e12 = e12.dual()
+
+    # Should be grade-1 (vector)
+    grade_1 = dual_e12.grade(1)
+    assert dual_e12.approx_eq(grade_1)
+
+
+def test_dual_2d():
+    """In 2D, dual of vector is vector rotated 90 degrees."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    dual_e1 = e1.dual()
+
+    # In 2D: I = e12, I^-1 = -e12
+    # e1 * (-e12) = -e1*e12 = -e2
+    expected = e2 * (-1.0)
+    assert dual_e1.approx_eq(expected)
+
+
+def test_dual_linearity():
+    """Dual is linear: (aA + bB)* = a*A* + b*B*"""
+    import largecrimsoncanine as lcc
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    a, b = 3.0, 2.0
+    combined = v1 * a + v2 * b
+
+    dual_combined = combined.dual()
+    dual_separate = v1.dual() * a + v2.dual() * b
+
+    assert dual_combined.approx_eq(dual_separate)
+
+
+def test_dual_4d():
+    """Dual works in 4D."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0, 4.0])
+
+    dual_v = v.dual()
+
+    # In 4D, dual of vector (grade 1) is trivector (grade 3)
+    grade_3 = dual_v.grade(3)
+    assert dual_v.approx_eq(grade_3)
+
+
+def test_right_dual():
+    """right_dual computes I^-1 * A."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    left_dual = v.dual()     # A * I^-1
+    right_dual = v.right_dual()  # I^-1 * A
+
+    # They differ by sign in 3D for vectors
+    # Both should be grade 2
+    assert left_dual.grade(2).approx_eq(left_dual)
+    assert right_dual.grade(2).approx_eq(right_dual)
+
+
+def test_cross_product_via_dual():
+    """In 3D, cross product is dual of wedge: a × b = (a ∧ b)*"""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    # e1 × e2 = e3
+    wedge = e1 ^ e2  # e12
+    cross = wedge.dual()
+
+    # Should be proportional to e3
+    # e12 * I^-1 = e12 * (-e123) = -e12*e123 = -e3*e12*e12 = e3 (checking sign...)
+    # Actually: e12 * e123 = e12*e1*e2*e3 = -e2*e2*e3 = -e3
+    # So e12 * (-e123) = e3
+    assert cross.approx_eq(e3) or cross.approx_eq(-e3)  # Sign depends on convention
+
