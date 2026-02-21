@@ -644,6 +644,100 @@ impl Multivector {
         self.reverse()
     }
 
+    /// Compute the grade involution (main involution) of this multivector.
+    ///
+    /// Grade involution negates odd-grade components while leaving even grades unchanged.
+    /// For a blade of grade k: Â = (-1)^k * A.
+    ///
+    /// Properties:
+    /// - Scalars and bivectors are unchanged
+    /// - Vectors and trivectors are negated
+    /// - (A * B)^ = Â * B̂ (automorphism)
+    ///
+    /// Useful for:
+    /// - Separating even and odd parts: A_even = (A + Â)/2, A_odd = (A - Â)/2
+    /// - Defining Clifford conjugate: A† = (Â)~ = (~A)^
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn grade_involution(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                let grade = algebra::blade_grade(i);
+                c * algebra::grade_involution_sign(grade)
+            })
+            .collect();
+        Multivector { coeffs, dims: self.dims }
+    }
+
+    /// Alias for grade_involution (hat notation).
+    pub fn involute(&self) -> Self {
+        self.grade_involution()
+    }
+
+    /// Compute the Clifford conjugate of this multivector.
+    ///
+    /// Clifford conjugation combines reverse and grade involution:
+    /// A† = (Â)~ = (~A)^ (both compositions give the same result).
+    ///
+    /// For a blade of grade k: A† = (-1)^(k(k+1)/2) * A.
+    ///
+    /// Sign pattern by grade:
+    /// - Grade 0 (scalars): +1 (unchanged)
+    /// - Grade 1 (vectors): -1 (negated)
+    /// - Grade 2 (bivectors): -1 (negated)
+    /// - Grade 3 (trivectors): +1 (unchanged)
+    /// - Pattern repeats with period 4
+    ///
+    /// Useful for:
+    /// - Computing norms in non-Euclidean algebras
+    /// - Defining the "bar" conjugate in physics applications
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn clifford_conjugate(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                let grade = algebra::blade_grade(i);
+                c * algebra::clifford_conjugate_sign(grade)
+            })
+            .collect();
+        Multivector { coeffs, dims: self.dims }
+    }
+
+    /// Alias for clifford_conjugate (dagger notation).
+    pub fn conjugate(&self) -> Self {
+        self.clifford_conjugate()
+    }
+
+    /// Extract the even-grade part of this multivector.
+    ///
+    /// Returns a new multivector containing only grades 0, 2, 4, ...
+    /// Computed as (A + Â) / 2 where Â is the grade involution.
+    ///
+    /// Rotors are always even-grade multivectors.
+    pub fn even(&self) -> Self {
+        let inv = self.grade_involution();
+        let sum = self.coeffs.iter()
+            .zip(inv.coeffs.iter())
+            .map(|(a, b)| (a + b) / 2.0)
+            .collect();
+        Multivector { coeffs: sum, dims: self.dims }
+    }
+
+    /// Extract the odd-grade part of this multivector.
+    ///
+    /// Returns a new multivector containing only grades 1, 3, 5, ...
+    /// Computed as (A - Â) / 2 where Â is the grade involution.
+    pub fn odd(&self) -> Self {
+        let inv = self.grade_involution();
+        let sum = self.coeffs.iter()
+            .zip(inv.coeffs.iter())
+            .map(|(a, b)| (a - b) / 2.0)
+            .collect();
+        Multivector { coeffs: sum, dims: self.dims }
+    }
+
     /// Compute the squared norm of this multivector.
     ///
     /// For a multivector A: |A|² = ⟨A ~A⟩₀ (scalar part of A times its reverse).

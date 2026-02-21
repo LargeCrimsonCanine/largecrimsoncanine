@@ -38,6 +38,40 @@ pub fn reverse_sign(grade: usize) -> f64 {
     if grade % 4 < 2 { 1.0 } else { -1.0 }
 }
 
+/// Returns the sign factor for grade involution on a blade of given grade.
+///
+/// Grade involution (also called main involution) negates odd-grade components:
+/// (-1)^k = +1 for even grades, -1 for odd grades.
+///
+/// This operation maps vectors to their negatives while leaving scalars unchanged.
+/// Useful for separating even and odd parts of a multivector.
+///
+/// Reference: Dorst et al. ch.2 [VERIFY]
+pub fn grade_involution_sign(grade: usize) -> f64 {
+    if grade % 2 == 0 { 1.0 } else { -1.0 }
+}
+
+/// Returns the sign factor for Clifford conjugation on a blade of given grade.
+///
+/// Clifford conjugation combines reverse and grade involution:
+/// (-1)^(k(k+1)/2) where k is the grade.
+///
+/// Pattern by grade mod 4:
+/// - Grade 0: +1  (scalars unchanged)
+/// - Grade 1: -1  (vectors negated)
+/// - Grade 2: -1  (bivectors negated)
+/// - Grade 3: +1  (trivectors unchanged)
+/// - Grade 4: +1, Grade 5: -1, etc.
+///
+/// Reference: Dorst et al. ch.2 [VERIFY]
+pub fn clifford_conjugate_sign(grade: usize) -> f64 {
+    // (-1)^(k(k+1)/2): k mod 4 in {0, 3} gives +1, k mod 4 in {1, 2} gives -1
+    match grade % 4 {
+        0 | 3 => 1.0,
+        _ => -1.0,
+    }
+}
+
 /// Counts the number of transpositions needed to merge two sorted blade sequences.
 ///
 /// For each bit set in b, counts the number of bits in a that are greater than it.
@@ -119,6 +153,36 @@ mod tests {
         assert_relative_eq!(reverse_sign(4), 1.0);
         // Grade 5: (-1)^(5*4/2) = (-1)^10 = 1
         assert_relative_eq!(reverse_sign(5), 1.0);
+    }
+
+    #[test]
+    fn test_grade_involution_sign() {
+        // Formula: (-1)^k
+        // Even grades: +1
+        assert_relative_eq!(grade_involution_sign(0), 1.0);
+        assert_relative_eq!(grade_involution_sign(2), 1.0);
+        assert_relative_eq!(grade_involution_sign(4), 1.0);
+        // Odd grades: -1
+        assert_relative_eq!(grade_involution_sign(1), -1.0);
+        assert_relative_eq!(grade_involution_sign(3), -1.0);
+        assert_relative_eq!(grade_involution_sign(5), -1.0);
+    }
+
+    #[test]
+    fn test_clifford_conjugate_sign() {
+        // Formula: (-1)^(k(k+1)/2)
+        // Grade 0: (-1)^0 = 1
+        assert_relative_eq!(clifford_conjugate_sign(0), 1.0);
+        // Grade 1: (-1)^1 = -1
+        assert_relative_eq!(clifford_conjugate_sign(1), -1.0);
+        // Grade 2: (-1)^3 = -1
+        assert_relative_eq!(clifford_conjugate_sign(2), -1.0);
+        // Grade 3: (-1)^6 = 1
+        assert_relative_eq!(clifford_conjugate_sign(3), 1.0);
+        // Grade 4: (-1)^10 = 1
+        assert_relative_eq!(clifford_conjugate_sign(4), 1.0);
+        // Grade 5: (-1)^15 = -1
+        assert_relative_eq!(clifford_conjugate_sign(5), -1.0);
     }
 }
 

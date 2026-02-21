@@ -1557,3 +1557,238 @@ def test_cross_product_via_dual():
     # So e12 * (-e123) = e3
     assert cross.approx_eq(e3) or cross.approx_eq(-e3)  # Sign depends on convention
 
+
+# =============================================================================
+# CONJUGATE TESTS (grade involution, Clifford conjugate)
+# =============================================================================
+
+
+def test_grade_involution_scalar():
+    """Grade involution leaves scalars unchanged (grade 0, even)."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+
+    inv = s.grade_involution()
+
+    assert inv.approx_eq(s)
+
+
+def test_grade_involution_vector():
+    """Grade involution negates vectors (grade 1, odd)."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    inv = v.grade_involution()
+
+    assert inv.approx_eq(-v)
+
+
+def test_grade_involution_bivector():
+    """Grade involution leaves bivectors unchanged (grade 2, even)."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    inv = B.grade_involution()
+
+    assert inv.approx_eq(B)
+
+
+def test_grade_involution_trivector():
+    """Grade involution negates trivectors (grade 3, odd)."""
+    import largecrimsoncanine as lcc
+    I = lcc.Multivector.pseudoscalar(3)  # e123 is grade 3
+
+    inv = I.grade_involution()
+
+    assert inv.approx_eq(-I)
+
+
+def test_grade_involution_involute_alias():
+    """involute() should be an alias for grade_involution()."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.grade_involution().approx_eq(v.involute())
+
+
+def test_grade_involution_is_automorphism():
+    """Grade involution is an automorphism: (A * B)^ = Â * B̂."""
+    import largecrimsoncanine as lcc
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    product = v1 * v2
+    product_inv = product.grade_involution()
+
+    v1_inv = v1.grade_involution()
+    v2_inv = v2.grade_involution()
+    inv_product = v1_inv * v2_inv
+
+    assert product_inv.approx_eq(inv_product)
+
+
+def test_grade_involution_involutory():
+    """Applying grade involution twice returns original: (Â)^ = A."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    double_inv = v.grade_involution().grade_involution()
+
+    assert double_inv.approx_eq(v)
+
+
+def test_clifford_conjugate_scalar():
+    """Clifford conjugate leaves scalars unchanged (grade 0)."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+
+    conj = s.clifford_conjugate()
+
+    assert conj.approx_eq(s)
+
+
+def test_clifford_conjugate_vector():
+    """Clifford conjugate negates vectors (grade 1)."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    conj = v.clifford_conjugate()
+
+    assert conj.approx_eq(-v)
+
+
+def test_clifford_conjugate_bivector():
+    """Clifford conjugate negates bivectors (grade 2)."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    conj = B.clifford_conjugate()
+
+    assert conj.approx_eq(-B)
+
+
+def test_clifford_conjugate_trivector():
+    """Clifford conjugate leaves trivectors unchanged (grade 3)."""
+    import largecrimsoncanine as lcc
+    I = lcc.Multivector.pseudoscalar(3)  # e123 is grade 3
+
+    conj = I.clifford_conjugate()
+
+    assert conj.approx_eq(I)
+
+
+def test_clifford_conjugate_alias():
+    """conjugate() should be an alias for clifford_conjugate()."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.clifford_conjugate().approx_eq(v.conjugate())
+
+
+def test_clifford_conjugate_equals_reverse_then_involute():
+    """Clifford conjugate equals reverse then grade involution: A† = (~A)^."""
+    import largecrimsoncanine as lcc
+    # Mixed multivector with multiple grades
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([2.0, 3.0, 4.0])
+    B = lcc.Multivector.from_bivector([5.0, 6.0, 7.0], dims=3)
+    mv = s + v + B
+
+    conj = mv.clifford_conjugate()
+    reverse_then_involute = mv.reverse().grade_involution()
+
+    assert conj.approx_eq(reverse_then_involute)
+
+
+def test_clifford_conjugate_equals_involute_then_reverse():
+    """Clifford conjugate equals grade involution then reverse: A† = (Â)~."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([2.0, 3.0, 4.0])
+    B = lcc.Multivector.from_bivector([5.0, 6.0, 7.0], dims=3)
+    mv = s + v + B
+
+    conj = mv.clifford_conjugate()
+    involute_then_reverse = mv.grade_involution().reverse()
+
+    assert conj.approx_eq(involute_then_reverse)
+
+
+def test_even_extracts_even_grades():
+    """even() should extract grades 0, 2, 4, ..."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([2.0, 3.0, 4.0])
+    B = lcc.Multivector.from_bivector([5.0, 6.0, 7.0], dims=3)
+    mv = s + v + B
+
+    even_part = mv.even()
+
+    # Should equal scalar + bivector (grades 0 and 2)
+    expected = s + B
+    assert even_part.approx_eq(expected)
+
+
+def test_odd_extracts_odd_grades():
+    """odd() should extract grades 1, 3, 5, ..."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([2.0, 3.0, 4.0])
+    B = lcc.Multivector.from_bivector([5.0, 6.0, 7.0], dims=3)
+    mv = s + v + B
+
+    odd_part = mv.odd()
+
+    # Should equal just the vector (grade 1)
+    assert odd_part.approx_eq(v)
+
+
+def test_even_plus_odd_equals_original():
+    """A.even() + A.odd() = A."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([2.0, 3.0, 4.0])
+    B = lcc.Multivector.from_bivector([5.0, 6.0, 7.0], dims=3)
+    I = lcc.Multivector.pseudoscalar(3)
+    mv = s + v + B + I
+
+    reconstructed = mv.even() + mv.odd()
+
+    assert reconstructed.approx_eq(mv)
+
+
+def test_rotor_is_even():
+    """Rotors should be purely even-grade multivectors."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotor should equal its even part
+    assert R.approx_eq(R.even())
+
+    # Odd part should be zero
+    zero = lcc.Multivector.zero(3)
+    assert R.odd().approx_eq(zero)
+
+
+def test_grade_involution_4d():
+    """Grade involution works in 4D (grade 4 = even, unchanged)."""
+    import largecrimsoncanine as lcc
+    I4 = lcc.Multivector.pseudoscalar(4)  # grade 4 (even)
+
+    inv = I4.grade_involution()
+
+    assert inv.approx_eq(I4)  # Even grade, should be unchanged
+
+
+def test_clifford_conjugate_4d():
+    """Clifford conjugate in 4D: grade 4 has sign (-1)^(4*5/2) = (-1)^10 = +1."""
+    import largecrimsoncanine as lcc
+    I4 = lcc.Multivector.pseudoscalar(4)  # grade 4
+
+    conj = I4.clifford_conjugate()
+
+    assert conj.approx_eq(I4)  # Sign should be +1
+
