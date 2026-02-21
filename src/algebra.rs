@@ -26,6 +26,18 @@ pub fn blade_product(a: usize, b: usize) -> (usize, f64) {
     (result_blade, sign)
 }
 
+/// Returns the sign factor for the reverse operation on a blade of given grade.
+///
+/// The reverse of a grade-k blade picks up a sign of (-1)^(k(k-1)/2).
+/// This equals +1 for grades 0, 1, 4, 5, 8, 9, ... (k mod 4 in {0, 1})
+/// and -1 for grades 2, 3, 6, 7, 10, 11, ... (k mod 4 in {2, 3})
+///
+/// Reference: Dorst et al. ch.2 [VERIFY]
+pub fn reverse_sign(grade: usize) -> f64 {
+    // (-1)^(k(k-1)/2) simplifies to checking k mod 4
+    if grade % 4 < 2 { 1.0 } else { -1.0 }
+}
+
 /// Counts the number of transpositions needed to merge two sorted blade sequences.
 ///
 /// For each bit set in b, counts the number of bits in a that are greater than it.
@@ -90,6 +102,22 @@ mod tests {
         let (blade, sign) = blade_product(1, 1);
         assert_eq!(blade, 0);
         assert_relative_eq!(sign, 1.0);
+    }
+
+    #[test]
+    fn test_reverse_sign() {
+        // Grade 0: (-1)^0 = 1
+        assert_relative_eq!(reverse_sign(0), 1.0);
+        // Grade 1: (-1)^0 = 1
+        assert_relative_eq!(reverse_sign(1), 1.0);
+        // Grade 2: (-1)^1 = -1
+        assert_relative_eq!(reverse_sign(2), -1.0);
+        // Grade 3: (-1)^3 = -1
+        assert_relative_eq!(reverse_sign(3), -1.0);
+        // Grade 4: (-1)^6 = 1
+        assert_relative_eq!(reverse_sign(4), 1.0);
+        // Grade 5: (-1)^10 = 1
+        assert_relative_eq!(reverse_sign(5), 1.0);
     }
 }
 
