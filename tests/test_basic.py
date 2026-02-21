@@ -970,3 +970,173 @@ def test_basis_dims_zero_error():
     with pytest.raises(ValueError):
         lcc.Multivector.basis(1, dims=0)
 
+
+# =============================================================================
+# INVERSE AND DIVISION TESTS
+# =============================================================================
+
+def test_scalar_inverse():
+    """Inverse of a scalar."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(2.0, dims=2)
+    s_inv = s.inverse()
+
+    # 2 * (1/2) = 1
+    result = s * s_inv
+    assert abs(result.scalar() - 1.0) < 1e-10
+    assert abs(result[1]) < 1e-10  # no e1
+    assert abs(result[2]) < 1e-10  # no e2
+
+
+def test_vector_inverse():
+    """Inverse of a vector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0])  # |v|² = 25
+
+    v_inv = v.inverse()
+
+    # v * v⁻¹ should equal 1
+    result = v * v_inv
+    assert abs(result.scalar() - 1.0) < 1e-10
+    # All other components should be zero
+    for i in range(1, len(result)):
+        assert abs(result[i]) < 1e-10
+
+
+def test_basis_vector_inverse():
+    """Inverse of basis vector."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=3)
+
+    e1_inv = e1.inverse()
+
+    # e1 * e1⁻¹ = 1
+    result = e1 * e1_inv
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_bivector_inverse():
+    """Inverse of a bivector."""
+    import largecrimsoncanine as lcc
+    # e12 has norm_squared = 1 (in Euclidean)
+    e12 = lcc.Multivector.pseudoscalar(2)
+
+    e12_inv = e12.inverse()
+
+    # e12 * e12⁻¹ = 1
+    result = e12 * e12_inv
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_rotor_inverse():
+    """Inverse of a rotor (scalar + bivector)."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Create a unit rotor: cos(θ/2) + sin(θ/2)*e12
+    theta = math.pi / 4  # 45 degrees
+    s = lcc.Multivector.from_scalar(math.cos(theta / 2), dims=2)
+    e12 = lcc.Multivector.pseudoscalar(2)
+    R = s + e12 * math.sin(theta / 2)
+
+    R_inv = R.inverse()
+
+    # R * R⁻¹ = 1
+    result = R * R_inv
+    assert abs(result.scalar() - 1.0) < 1e-10
+    assert abs(result[3]) < 1e-10  # no e12
+
+
+def test_inverse_zero_raises():
+    """Inverse of zero multivector should raise."""
+    import largecrimsoncanine as lcc
+    z = lcc.Multivector.zero(3)
+    with pytest.raises(ValueError):
+        z.inverse()
+
+
+def test_division_by_scalar():
+    """A / scalar works."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([6.0, 8.0])
+    result = v / 2.0
+    assert result[1] == 3.0
+    assert result[2] == 4.0
+
+
+def test_division_by_multivector():
+    """A / B = A * B⁻¹ works."""
+    import largecrimsoncanine as lcc
+    # v / v should give 1 (scalar)
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    result = v / v
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_division_solves_equation():
+    """Test that A / B solves the equation X * B = A."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=2)
+    e2 = lcc.Multivector.basis(2, dims=2)
+
+    # A = e1 + 2*e2
+    A = e1 + e2 * 2.0
+
+    # B = e1
+    B = e1
+
+    # X = A / B should satisfy X * B = A
+    X = A / B
+    result = X * B
+
+    assert result.approx_eq(A)
+
+
+def test_division_by_zero_scalar_raises():
+    """Division by zero scalar should raise."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    with pytest.raises(ZeroDivisionError):
+        v / 0.0
+
+
+def test_division_by_zero_multivector_raises():
+    """Division by zero multivector should raise."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    z = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError):
+        v / z
+
+
+def test_division_dimension_mismatch():
+    """Division with dimension mismatch should raise."""
+    import largecrimsoncanine as lcc
+    v2 = lcc.Multivector.from_vector([1.0, 2.0])  # Cl(2)
+    v3 = lcc.Multivector.from_vector([1.0, 2.0, 3.0])  # Cl(3)
+    with pytest.raises(ValueError):
+        v2 / v3
+
+
+def test_inverse_inverse_identity():
+    """(A⁻¹)⁻¹ = A"""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    v_inv_inv = v.inverse().inverse()
+    assert v.approx_eq(v_inv_inv)
+
+
+def test_product_inverse():
+    """(A * B)⁻¹ = B⁻¹ * A⁻¹ for invertible A, B."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=2)
+    e2 = lcc.Multivector.basis(2, dims=2)
+
+    AB = e1 * e2
+    AB_inv = AB.inverse()
+
+    # B⁻¹ * A⁻¹
+    B_inv_A_inv = e2.inverse() * e1.inverse()
+
+    assert AB_inv.approx_eq(B_inv_A_inv)
+
