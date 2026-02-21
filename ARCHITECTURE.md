@@ -117,6 +117,31 @@ over:
 
 Users encountering errors are often not the people who wrote the calling code. Error messages are documentation.
 
+## Visualization Standards
+
+When visualization features are added (Jupyter integration, plotting), they must follow these accessibility standards:
+
+### Colorblind-Safe Palette
+
+The default palette uses colors distinguishable by users with common forms of color blindness (deuteranopia, protanopia, tritanopia). Based on the Wong palette [VERIFY]:
+
+| Name    | Hex       | RGB             | Use case           |
+|---------|-----------|-----------------|---------------------|
+| Blue    | `#0072B2` | (0, 114, 178)   | Primary elements    |
+| Orange  | `#E69F00` | (230, 159, 0)   | Secondary elements  |
+| Green   | `#009E73` | (0, 158, 115)   | Tertiary elements   |
+| Yellow  | `#F0E442` | (240, 228, 66)  | Highlights          |
+| Sky     | `#56B4E9` | (86, 180, 233)  | Background accents  |
+| Vermillion | `#D55E00` | (213, 94, 0) | Warnings/alerts     |
+| Purple  | `#CC79A7` | (204, 121, 167) | Special elements    |
+| Black   | `#000000` | (0, 0, 0)       | Text, outlines      |
+
+### Additional Requirements
+
+- **Never use color alone** — all visual distinctions must also use shape, pattern, or label
+- **High contrast** — minimum 4.5:1 contrast ratio for text, 3:1 for graphics
+- **Pattern fills** — provide hatching/stippling options for filled regions
+
 ## Versioning
 
 Semantic versioning. A breaking change is any change that requires existing correct user code to be modified. We prefer adding new APIs over changing existing ones.
