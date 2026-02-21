@@ -75,6 +75,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_versor()` — check if multivector is a product of vectors
 - `grades()` — list of grades with non-zero components
 - `max_grade()`, `min_grade()` — highest/lowest non-zero grade
+- `has_grade(k)` — check if grade k has non-zero components
+- `pure_grade()` — return grade if single-grade, None otherwise
+- `is_scalar()`, `is_vector()`, `is_bivector()`, `is_trivector()` — grade checks
+- `is_pseudoscalar()` — check if highest grade only
+- `is_zero()` — check if all coefficients are zero
+- `components()` — list of (index, coefficient) pairs
+- `blade_indices()` — list of non-zero blade indices
 
 **Geometric Predicates**
 - `angle_between(other)` — angle between vectors in radians
@@ -85,7 +92,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_orthogonal(other)` — check if vectors are perpendicular
 
 **Infrastructure**
-- Python test suite (287 tests)
+- Python test suite (311 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

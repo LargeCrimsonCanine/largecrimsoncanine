@@ -3482,3 +3482,262 @@ def test_axis_angle_not_3d_raises():
     with pytest.raises(ValueError):
         R.axis_angle()
 
+
+# =============================================================================
+# HAS_GRADE TESTS
+# =============================================================================
+
+def test_has_grade_scalar():
+    """Scalar has grade 0."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.has_grade(0)
+    assert not s.has_grade(1)
+    assert not s.has_grade(2)
+
+
+def test_has_grade_vector():
+    """Vector has grade 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert not v.has_grade(0)
+    assert v.has_grade(1)
+    assert not v.has_grade(2)
+
+
+def test_has_grade_rotor():
+    """Rotor has grades 0 and 2."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.has_grade(0)
+    assert not R.has_grade(1)
+    assert R.has_grade(2)
+
+
+def test_has_grade_zero():
+    """Zero has no grades."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert not z.has_grade(0)
+    assert not z.has_grade(1)
+    assert not z.has_grade(2)
+
+
+# =============================================================================
+# PURE_GRADE TESTS
+# =============================================================================
+
+def test_pure_grade_scalar():
+    """Scalar has pure grade 0."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.pure_grade() == 0
+
+
+def test_pure_grade_vector():
+    """Vector has pure grade 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.pure_grade() == 1
+
+
+def test_pure_grade_bivector():
+    """Bivector has pure grade 2."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    assert B.pure_grade() == 2
+
+
+def test_pure_grade_mixed():
+    """Mixed multivector has no pure grade."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    mixed = s + v
+
+    assert mixed.pure_grade() is None
+
+
+def test_pure_grade_zero():
+    """Zero has no pure grade."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.pure_grade() is None
+
+
+# =============================================================================
+# IS_SCALAR / IS_VECTOR / IS_BIVECTOR TESTS
+# =============================================================================
+
+def test_is_scalar_true():
+    """Scalar returns True for is_scalar."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.is_scalar()
+    assert not s.is_vector()
+    assert not s.is_bivector()
+
+
+def test_is_vector_true():
+    """Vector returns True for is_vector."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert not v.is_scalar()
+    assert v.is_vector()
+    assert not v.is_bivector()
+
+
+def test_is_bivector_true():
+    """Bivector returns True for is_bivector."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    assert not B.is_scalar()
+    assert not B.is_vector()
+    assert B.is_bivector()
+
+
+def test_is_trivector():
+    """Pseudoscalar in 3D is trivector."""
+    import largecrimsoncanine as lcc
+
+    I = lcc.Multivector.pseudoscalar(3)
+    assert I.is_trivector()
+    assert I.is_pseudoscalar()
+
+
+def test_is_pseudoscalar_4d():
+    """Pseudoscalar in 4D."""
+    import largecrimsoncanine as lcc
+
+    I = lcc.Multivector.pseudoscalar(4)
+    assert I.is_pseudoscalar()
+    assert not I.is_trivector()  # grade 4, not 3
+
+
+# =============================================================================
+# IS_ZERO TESTS
+# =============================================================================
+
+def test_is_zero_true():
+    """Zero multivector is zero."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.is_zero()
+
+
+def test_is_zero_false():
+    """Non-zero multivector is not zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    assert not v.is_zero()
+
+
+def test_is_zero_scalar_zero():
+    """Scalar zero is zero."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(0.0, dims=3)
+    assert s.is_zero()
+
+
+# =============================================================================
+# COMPONENTS TESTS
+# =============================================================================
+
+def test_components_scalar():
+    """Scalar has one component at index 0."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    comps = s.components()
+
+    assert len(comps) == 1
+    assert comps[0] == (0, 5.0)
+
+
+def test_components_vector():
+    """Vector has components at power-of-2 indices."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    comps = v.components()
+
+    # e1 at index 1, e2 at index 2, e3 at index 4
+    assert (1, 1.0) in comps
+    assert (2, 2.0) in comps
+    assert (4, 3.0) in comps
+
+
+def test_components_zero():
+    """Zero has no components."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.components() == []
+
+
+def test_components_sparse():
+    """Sparse multivector returns only non-zero."""
+    import largecrimsoncanine as lcc
+
+    # e1 + e12 (indices 1 and 3)
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    mv = e1 + e12
+
+    comps = mv.components()
+    assert len(comps) == 2
+    indices = [c[0] for c in comps]
+    assert 1 in indices  # e1
+    assert 3 in indices  # e12
+
+
+# =============================================================================
+# BLADE_INDICES TESTS
+# =============================================================================
+
+def test_blade_indices_vector():
+    """Vector blade indices are powers of 2."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    indices = v.blade_indices()
+
+    assert set(indices) == {1, 2, 4}
+
+
+def test_blade_indices_bivector():
+    """Bivector blade indices."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+    indices = B.blade_indices()
+
+    # e12=3, e13=5, e23=6
+    assert set(indices) == {3, 5, 6}
+
+
+def test_blade_indices_zero():
+    """Zero has no blade indices."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.blade_indices() == []
+
