@@ -40,9 +40,34 @@ pub fn geometric_product(&self, rhs: &Multivector) -> Multivector {
 
 All mathematical references must be marked [VERIFY] until independently confirmed. Do not add citations from memory. 
 
+## Accessibility
+
+Accessibility is a baseline expectation, not a feature. LCC is committed to meeting users where they are — including disabled users. We target WCAG 2.1 Level AA compliance where applicable.
+
+### Documentation
+
+- **Screen reader friendly** — code examples must be logical in linear reading order. Avoid ASCII art diagrams that become gibberish when read aloud.
+- **Heading hierarchy** — documentation pages should have logical heading structure (h1 → h2 → h3) so screen reader users can navigate by heading.
+- **Alt text** — all images and diagrams need descriptive alt text.
+- **Plain language** — clear, direct writing. Define mathematical terms when unavoidable.
+
+### API Design
+
+- **Predictable naming** — methods do exactly what their names suggest. No surprises.
+- **Educational error messages** — tell users what went wrong and how to fix it. Error messages are documentation.
+- **Consistent patterns** — similar operations should have similar interfaces.
+
+### Future Visualizations
+
+When we add visualization features (Jupyter integration, etc.):
+
+- **Never use color alone** — geometric objects must be distinguishable by shape, pattern, or label in addition to color.
+- **Colorblind-safe palette** — default colors must be distinguishable by users with common forms of color blindness. See `COLORBLIND_PALETTE` in the codebase.
+- **High contrast support** — visualizations must remain legible in high contrast display modes.
+
 ## Development Setup
 
-Requires Rust (stable) and Python 3.8+.
+Requires Rust (stable) and Python 3.9+.
 
 ```bash
 git clone https://github.com/LargeCrimsonCanine/largecrimsoncanine
