@@ -1342,6 +1342,139 @@ impl Multivector {
         self.geometric_product(&exp_scaled)
     }
 
+    /// Extract the rotation angle from a rotor.
+    ///
+    /// For a rotor R = cos(θ/2) + sin(θ/2) * B̂ where B̂ is a unit bivector,
+    /// this returns θ (the full rotation angle, not the half-angle).
+    ///
+    /// Returns a value in [0, 2π].
+    ///
+    /// Raises ValueError if the multivector is not a valid rotor.
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn rotation_angle(&self, tol: f64) -> PyResult<f64> {
+        if !self.is_rotor(tol) {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "multivector is not a valid rotor (must satisfy R * ~R = 1)",
+            ));
+        }
+
+        // R = cos(θ/2) + sin(θ/2) * B̂
+        // The scalar part is cos(θ/2)
+        let cos_half = self.scalar();
+
+        // The bivector part has magnitude sin(θ/2)
+        let bivector = self.grade(2)?;
+        let sin_half = bivector.norm();
+
+        // θ = 2 * atan2(sin(θ/2), cos(θ/2))
+        let half_angle = sin_half.atan2(cos_half);
+        Ok(2.0 * half_angle.abs())
+    }
+
+    /// Extract the rotation plane (bivector) from a rotor.
+    ///
+    /// For a rotor R = cos(θ/2) + sin(θ/2) * B̂, this returns the unit
+    /// bivector B̂ representing the plane of rotation.
+    ///
+    /// For the identity rotor (θ = 0), returns the zero bivector.
+    ///
+    /// Raises ValueError if the multivector is not a valid rotor.
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn rotation_plane(&self, tol: f64) -> PyResult<Self> {
+        if !self.is_rotor(tol) {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "multivector is not a valid rotor (must satisfy R * ~R = 1)",
+            ));
+        }
+
+        let bivector = self.grade(2)?;
+        let norm = bivector.norm();
+
+        if norm <= tol {
+            // Identity rotor - return zero bivector
+            Ok(bivector)
+        } else {
+            // Normalize to get unit bivector
+            Ok(bivector.scale(1.0 / norm))
+        }
+    }
+
+    /// Compute the 3D cross product of two vectors.
+    ///
+    /// The cross product a × b is computed as the dual of the wedge product:
+    /// a × b = (a ∧ b)*
+    ///
+    /// This is only defined for vectors in 3D (Cl(3)).
+    ///
+    /// Raises ValueError if dimensions are not 3 or inputs are not vectors.
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn cross(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "cross product is only defined in 3D; this multivector is in Cl({})",
+                self.dims
+            )));
+        }
+        if other.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "cross product is only defined in 3D; other multivector is in Cl({})",
+                other.dims
+            )));
+        }
+
+        // Cross product = dual of wedge product
+        let wedge = self.outer_product(other)?;
+        wedge.dual()
+    }
+
+    /// Decompose a rotor into axis-angle representation.
+    ///
+    /// Returns (axis, angle) where axis is a unit vector perpendicular to
+    /// the rotation plane, and angle is the rotation angle in radians.
+    ///
+    /// Only defined for 3D rotors. In 3D, every rotation has a unique axis.
+    ///
+    /// Raises ValueError if not a valid 3D rotor or if the rotor is identity.
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn axis_angle(&self, tol: f64) -> PyResult<(Self, f64)> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "axis_angle is only defined in 3D; this multivector is in Cl({})",
+                self.dims
+            )));
+        }
+        if !self.is_rotor(tol) {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "multivector is not a valid rotor (must satisfy R * ~R = 1)",
+            ));
+        }
+
+        let angle = self.rotation_angle(tol)?;
+
+        if angle.abs() <= tol {
+            // Identity rotor - no unique axis
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "identity rotor has no unique rotation axis; angle is zero",
+            ));
+        }
+
+        // The rotation plane bivector's dual is the axis
+        let plane = self.rotation_plane(tol)?;
+        let axis = plane.dual()?;
+
+        // Normalize the axis (should already be unit, but be safe)
+        let axis_normalized = axis.normalized()?;
+
+        Ok((axis_normalized, angle))
+    }
+
     // =========================================================================
     // GEOMETRIC PREDICATES
     // =========================================================================

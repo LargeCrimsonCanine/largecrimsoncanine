@@ -55,6 +55,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `exp()` — exponential (bivector → rotor)
 - `log()` — logarithm (rotor → bivector)
 - `slerp(other, t)` — spherical linear interpolation between rotors
+- `rotation_angle()` — extract rotation angle from rotor
+- `rotation_plane()` — extract rotation plane (bivector) from rotor
+- `axis_angle()` — decompose 3D rotor into axis and angle
+- `cross(other)` — 3D cross product (a × b = (a ∧ b)*)
 
 **Duality**
 - `dual()` — left dual (A * I⁻¹)
@@ -81,7 +85,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_orthogonal(other)` — check if vectors are perpendicular
 
 **Infrastructure**
-- Python test suite (269 tests)
+- Python test suite (287 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
