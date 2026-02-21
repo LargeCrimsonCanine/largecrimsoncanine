@@ -11,7 +11,7 @@ name = "largecrimsoncanine"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.23", features = ["extension-module"] }
+pyo3 = { version = "0.24", features = ["extension-module"] }
 
 [dev-dependencies]
 approx = "0.5"
