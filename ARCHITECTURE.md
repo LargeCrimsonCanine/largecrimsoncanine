@@ -136,11 +136,13 @@ The default palette uses colors distinguishable by users with common forms of co
 | Purple  | `#CC79A7` | (204, 121, 167) | Special elements    |
 | Black   | `#000000` | (0, 0, 0)       | Text, outlines      |
 
-### Additional Requirements
+### Additional Requirements (WCAG 2.1 AA)
 
-- **Never use color alone** — all visual distinctions must also use shape, pattern, or label
-- **High contrast** — minimum 4.5:1 contrast ratio for text, 3:1 for graphics
+- **Never use color alone** — all visual distinctions must also use shape, pattern, or label (WCAG 1.4.1)
+- **High contrast** — minimum 4.5:1 contrast ratio for text, 3:1 for graphics (WCAG 1.4.3, 1.4.11)
 - **Pattern fills** — provide hatching/stippling options for filled regions
+
+Reference: https://www.w3.org/WAI/WCAG21/quickref/ [VERIFY]
 
 ## Versioning
 

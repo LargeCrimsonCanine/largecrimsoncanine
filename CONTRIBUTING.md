@@ -42,7 +42,7 @@ All mathematical references must be marked [VERIFY] until independently confirme
 
 ## Accessibility
 
-Accessibility is a baseline expectation, not a feature. LCC is committed to meeting users where they are — including disabled users.
+Accessibility is a baseline expectation, not a feature. LCC is committed to meeting users where they are — including disabled users. We target WCAG 2.1 Level AA compliance where applicable.
 
 ### Documentation
 
