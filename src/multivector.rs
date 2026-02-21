@@ -796,6 +796,70 @@ impl Multivector {
         let norm_sq = self.norm_squared();
         (norm_sq - 1.0).abs() <= tol
     }
+
+    // =========================================================================
+    // DUAL OPERATIONS
+    // =========================================================================
+
+    /// Compute the dual of this multivector: A* = A * I⁻¹
+    ///
+    /// The dual operation maps grades to their complements:
+    /// - A scalar (grade 0) becomes a pseudoscalar (grade n)
+    /// - A vector (grade 1) becomes a pseudovector (grade n-1)
+    /// - etc.
+    ///
+    /// This is a fundamental operation in geometric algebra, used for:
+    /// - Converting between vectors and hyperplanes
+    /// - Implementing cross products in 3D (v₁ × v₂ = (v₁ ∧ v₂)*)
+    /// - Meet and join operations in projective geometry
+    ///
+    /// Example:
+    /// ```python
+    /// # In 3D, dual of a bivector is a vector
+    /// e12 = Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    /// e3 = e12.dual()  # Proportional to e3
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn dual(&self) -> PyResult<Self> {
+        // I = pseudoscalar, I⁻¹ = ~I / (I * ~I)
+        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        let ps_inv = pseudoscalar.inverse()?;
+        self.geometric_product(&ps_inv)
+    }
+
+    /// Compute the undual of this multivector: A = A* * I
+    ///
+    /// This reverses the dual operation: undual(dual(A)) = A.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// v_dual = v.dual()
+    /// v_back = v_dual.undual()
+    /// assert v.approx_eq(v_back)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn undual(&self) -> PyResult<Self> {
+        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        self.geometric_product(&pseudoscalar)
+    }
+
+    /// Compute the Hodge dual (right dual): *A = I⁻¹ * A
+    ///
+    /// An alternative dual convention where the pseudoscalar inverse
+    /// is multiplied on the left instead of the right.
+    ///
+    /// In many cases `dual()` and `right_dual()` differ only by sign,
+    /// but the distinction matters for oriented quantities.
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn right_dual(&self) -> PyResult<Self> {
+        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        let ps_inv = pseudoscalar.inverse()?;
+        ps_inv.geometric_product(self)
+    }
 }
 
 // Rust-only methods (not exposed to Python)
