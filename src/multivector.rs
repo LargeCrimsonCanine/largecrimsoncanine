@@ -1175,6 +1175,173 @@ impl Multivector {
         (norm_sq - 1.0).abs() <= tol
     }
 
+    /// Check if this multivector is a blade (simple k-vector).
+    ///
+    /// A blade is a multivector that can be written as the outer product
+    /// of k vectors. For a blade B of grade k > 0: B ∧ B = 0.
+    /// Scalars (grade 0) are blades by definition.
+    ///
+    /// Returns true if this multivector is approximately a blade.
+    ///
+    /// Reference: Dorst et al. ch.4 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_blade(&self, tol: f64) -> bool {
+        // Check if single grade
+        let grades = self.grades();
+        if grades.len() != 1 {
+            return false;
+        }
+
+        // Scalars (grade 0) are blades by definition
+        if grades[0] == 0 {
+            return true;
+        }
+
+        // For a blade of grade k > 0: B ∧ B = 0
+        if let Ok(bb) = self.outer_product(self) {
+            bb.norm() <= tol
+        } else {
+            false
+        }
+    }
+
+    /// Check if this multivector is a versor.
+    ///
+    /// A versor is a product of non-null vectors. Versors are invertible
+    /// and their sandwich product preserves grades.
+    ///
+    /// A multivector V is a versor if V * ~V is a non-zero scalar.
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_versor(&self, tol: f64) -> bool {
+        // V * ~V should be a scalar (grade 0 only)
+        let rev = self.reverse();
+        if let Ok(vvr) = self.geometric_product(&rev) {
+            // Check that only grade 0 is non-zero
+            for (i, &c) in vvr.coeffs.iter().enumerate() {
+                if i == 0 {
+                    // Scalar part should be non-zero
+                    if c.abs() <= tol {
+                        return false;
+                    }
+                } else {
+                    // All other grades should be zero
+                    if c.abs() > tol {
+                        return false;
+                    }
+                }
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Return a list of grades that have non-zero components.
+    ///
+    /// Example:
+    /// ```text
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// v.grades()  # returns [1]
+    ///
+    /// rotor = e1 * e2  # a bivector
+    /// rotor.grades()  # returns [2]
+    ///
+    /// mixed = scalar + vector
+    /// mixed.grades()  # returns [0, 1]
+    /// ```
+    pub fn grades(&self) -> Vec<usize> {
+        let mut result = Vec::new();
+        let mut seen = vec![false; self.dims + 1];
+
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c != 0.0 {
+                let g = algebra::blade_grade(i);
+                if !seen[g] {
+                    seen[g] = true;
+                    result.push(g);
+                }
+            }
+        }
+        result.sort();
+        result
+    }
+
+    /// Return the highest grade with a non-zero component.
+    ///
+    /// Returns None (Python: None) if the multivector is zero.
+    pub fn max_grade(&self) -> Option<usize> {
+        let mut max_g: Option<usize> = None;
+
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c != 0.0 {
+                let g = algebra::blade_grade(i);
+                max_g = Some(max_g.map_or(g, |m| m.max(g)));
+            }
+        }
+        max_g
+    }
+
+    /// Return the lowest grade with a non-zero component.
+    ///
+    /// Returns None (Python: None) if the multivector is zero.
+    pub fn min_grade(&self) -> Option<usize> {
+        let mut min_g: Option<usize> = None;
+
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c != 0.0 {
+                let g = algebra::blade_grade(i);
+                min_g = Some(min_g.map_or(g, |m| m.min(g)));
+            }
+        }
+        min_g
+    }
+
+    /// Spherical linear interpolation between two unit rotors.
+    ///
+    /// Interpolates from self (at t=0) to other (at t=1) along the
+    /// shortest geodesic on the rotor manifold.
+    ///
+    /// Both rotors should be unit rotors (R * ~R = 1).
+    ///
+    /// Example:
+    /// ```text
+    /// R1 = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+    /// R2 = Multivector.rotor_from_vectors(e1, e3)  # different rotation
+    /// R_mid = R1.slerp(R2, 0.5)  # halfway between
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn slerp(&self, other: &Multivector, t: f64) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left rotor is Cl({}) but right rotor is Cl({}); \
+                both rotors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        // R_t = R1 * (R1^-1 * R2)^t
+        // Using log/exp: R_t = R1 * exp(t * log(R1^-1 * R2))
+
+        // First compute R1^-1 * R2
+        let r1_inv = self.inverse()?;
+        let r1_inv_r2 = r1_inv.geometric_product(other)?;
+
+        // Take the log to get the bivector
+        let log_ratio = r1_inv_r2.log()?;
+
+        // Scale by t
+        let scaled = log_ratio.scale(t);
+
+        // Exponentiate back to rotor
+        let exp_scaled = scaled.exp()?;
+
+        // Multiply by R1
+        self.geometric_product(&exp_scaled)
+    }
+
     // =========================================================================
     // REFLECTION AND PROJECTION
     // =========================================================================

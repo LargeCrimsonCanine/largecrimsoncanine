@@ -54,6 +54,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_rotor()` — check if unit rotor
 - `exp()` — exponential (bivector → rotor)
 - `log()` — logarithm (rotor → bivector)
+- `slerp(other, t)` — spherical linear interpolation between rotors
 
 **Duality**
 - `dual()` — left dual (A * I⁻¹)
@@ -65,8 +66,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `project(B)` — projection onto blade B
 - `reject(B)` — rejection from blade B
 
+**Utilities**
+- `is_blade()` — check if multivector is a simple k-vector
+- `is_versor()` — check if multivector is a product of vectors
+- `grades()` — list of grades with non-zero components
+- `max_grade()`, `min_grade()` — highest/lowest non-zero grade
+
 **Infrastructure**
-- Python test suite (215 tests)
+- Python test suite (245 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
