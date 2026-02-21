@@ -2039,3 +2039,231 @@ def test_reflect_3d_arbitrary():
     expected = lcc.Multivector.from_vector([0.0, -1.0, 0.0])
     assert reflected.approx_eq(expected)
 
+
+# =============================================================================
+# EXPONENTIAL AND LOGARITHM TESTS
+# =============================================================================
+
+
+def test_exp_zero_bivector():
+    """exp(0) = 1 for zero bivector."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.zero(3)
+
+    R = B.exp()
+
+    one = lcc.Multivector.from_scalar(1.0, dims=3)
+    assert R.approx_eq(one)
+
+
+def test_exp_scalar():
+    """exp(s) = e^s for scalar."""
+    import largecrimsoncanine as lcc
+    import math
+
+    s = lcc.Multivector.from_scalar(2.0, dims=3)
+
+    result = s.exp()
+
+    expected = lcc.Multivector.from_scalar(math.e ** 2.0, dims=3)
+    assert result.approx_eq(expected)
+
+
+def test_exp_bivector_90_degrees():
+    """exp(-π/4 * e12) creates 90-degree rotor that rotates e1 to e2."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # For rotation from e1 to e2, we need negative bivector coefficient
+    # (the bivector e12 = e1∧e2 has orientation e1 → -e2 for positive angle)
+    e12 = lcc.Multivector.from_bivector([-math.pi / 4], dims=2)
+
+    R = e12.exp()
+
+    # Should be a unit rotor
+    assert R.is_rotor()
+
+    # Apply to e1, should get e2
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+    rotated = R.sandwich(e1)
+
+    assert rotated.approx_eq(e2)
+
+
+def test_exp_bivector_180_degrees():
+    """exp(π/2 * e12) creates 180-degree rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Bivector with magnitude π/2 (half of 180 degrees)
+    e12 = lcc.Multivector.from_bivector([math.pi / 2], dims=2)
+
+    R = e12.exp()
+
+    # Should be a unit rotor
+    assert R.is_rotor()
+
+    # Apply to e1, should get -e1
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    assert rotated.approx_eq(-e1)
+
+
+def test_exp_bivector_small_angle():
+    """exp of small bivector should be close to identity."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Very small angle
+    e12 = lcc.Multivector.from_bivector([0.001], dims=2)
+
+    R = e12.exp()
+
+    # Should be nearly 1
+    one = lcc.Multivector.from_scalar(1.0, dims=2)
+    # cos(0.001) ≈ 1, sin(0.001) ≈ 0.001
+    assert abs(R[0] - 1.0) < 0.01
+
+
+def test_exp_bivector_3d():
+    """exp works in 3D for rotation around arbitrary axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # 90-degree rotation in the xy-plane (around z-axis)
+    # Negative coefficient for rotation from e1 to e2
+    B = lcc.Multivector.from_bivector([-math.pi / 4, 0.0, 0.0], dims=3)
+
+    R = B.exp()
+
+    # Should be a unit rotor
+    assert R.is_rotor()
+
+    # e1 rotates to e2
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    assert rotated.approx_eq(e2)
+
+
+def test_log_identity_rotor():
+    """log(1) = 0."""
+    import largecrimsoncanine as lcc
+
+    one = lcc.Multivector.from_scalar(1.0, dims=3)
+
+    B = one.log()
+
+    zero = lcc.Multivector.zero(3)
+    assert B.approx_eq(zero)
+
+
+def test_log_90_degree_rotor():
+    """log of 90-degree rotor should have magnitude π/4."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    B = R.log()
+
+    # Should be a pure bivector
+    bivector_part = B.grade(2)
+    assert B.approx_eq(bivector_part)
+
+    # Magnitude should be π/4
+    assert abs(B.norm() - math.pi / 4) < 1e-10
+
+
+def test_exp_log_roundtrip():
+    """exp(log(R)) = R for unit rotors."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    B = R.log()
+    R_back = B.exp()
+
+    assert R_back.approx_eq(R)
+
+
+def test_log_exp_roundtrip():
+    """log(exp(B)) = B for bivectors with |B| < π."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Bivector with magnitude less than π
+    B = lcc.Multivector.from_bivector([0.5, 0.3, 0.2], dims=3)
+
+    R = B.exp()
+    B_back = R.log()
+
+    assert B_back.approx_eq(B)
+
+
+def test_log_non_unit_rotor_raises():
+    """log of non-unit multivector should raise."""
+    import largecrimsoncanine as lcc
+
+    # Non-unit multivector
+    v = lcc.Multivector.from_vector([2.0, 0.0])
+
+    with pytest.raises(ValueError):
+        v.log()
+
+
+def test_exp_bivector_matches_rotor_from_vectors():
+    """exp(B) should match rotor_from_vectors for same rotation."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # Create rotor two ways
+    R1 = lcc.Multivector.rotor_from_vectors(e1, e2)
+    # Negative coefficient for same rotation direction as rotor_from_vectors
+    B = lcc.Multivector.from_bivector([-math.pi / 4, 0.0, 0.0], dims=3)
+    R2 = B.exp()
+
+    # Both should rotate e1 to e2
+    rotated1 = R1.sandwich(e1)
+    rotated2 = R2.sandwich(e1)
+
+    assert rotated1.approx_eq(rotated2)
+
+
+def test_exp_additive_for_commuting_bivectors():
+    """exp(A + B) = exp(A) * exp(B) when A and B commute (same plane)."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Two bivectors in the same plane (they commute)
+    B1 = lcc.Multivector.from_bivector([0.2], dims=2)
+    B2 = lcc.Multivector.from_bivector([0.3], dims=2)
+
+    R_sum = (B1 + B2).exp()
+    R_product = B1.exp() * B2.exp()
+
+    assert R_sum.approx_eq(R_product)
+
+
+def test_exp_rotor_norm():
+    """exp of pure bivector should produce unit rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Various bivector magnitudes
+    for angle in [0.1, 0.5, 1.0, 2.0, 3.0]:
+        B = lcc.Multivector.from_bivector([angle, 0.0, 0.0], dims=3)
+        R = B.exp()
+        assert abs(R.norm() - 1.0) < 1e-10, f"Failed for angle {angle}"
+
