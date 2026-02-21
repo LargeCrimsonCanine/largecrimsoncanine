@@ -21,6 +21,7 @@ permissions:
 jobs:
   linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     strategy:
       matrix:
         target: [x86_64, aarch64]
@@ -43,6 +44,7 @@ jobs:
 
   musllinux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     strategy:
       matrix:
         target: [x86_64, aarch64]
@@ -65,6 +67,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         target: [x64]
@@ -87,6 +90,7 @@ jobs:
 
   macos:
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     strategy:
       matrix:
         include:
@@ -112,6 +116,7 @@ jobs:
 
   sdist:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
@@ -128,6 +133,7 @@ jobs:
   publish:
     name: Publish to PyPI
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [linux, musllinux, windows, macos, sdist]
     # Only publish on version tags, not workflow_dispatch
     if: startsWith(github.ref, 'refs/tags/v')
