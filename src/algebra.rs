@@ -35,7 +35,11 @@ pub fn blade_product(a: usize, b: usize) -> (usize, f64) {
 /// Reference: Dorst et al. ch.2 [VERIFY]
 pub fn reverse_sign(grade: usize) -> f64 {
     // (-1)^(k(k-1)/2) simplifies to checking k mod 4
-    if grade % 4 < 2 { 1.0 } else { -1.0 }
+    if grade % 4 < 2 {
+        1.0
+    } else {
+        -1.0
+    }
 }
 
 /// Returns the sign factor for grade involution on a blade of given grade.
@@ -48,7 +52,11 @@ pub fn reverse_sign(grade: usize) -> f64 {
 ///
 /// Reference: Dorst et al. ch.2 [VERIFY]
 pub fn grade_involution_sign(grade: usize) -> f64 {
-    if grade % 2 == 0 { 1.0 } else { -1.0 }
+    if grade.is_multiple_of(2) {
+        1.0
+    } else {
+        -1.0
+    }
 }
 
 /// Returns the sign factor for Clifford conjugation on a blade of given grade.
@@ -185,4 +193,3 @@ mod tests {
         assert_relative_eq!(clifford_conjugate_sign(5), -1.0);
     }
 }
-

@@ -12,8 +12,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 **Core**
 - Core `Multivector` type with coefficient array storage
 - Geometric product (`*` operator, `gp()`)
-- Outer (wedge) product (`^` operator, `wedge()`)
+- Outer (wedge) product (`^` operator, `wedge()`, `join()`)
 - Left contraction / inner product (`|` operator, `lc()`, `inner()`)
+- Right contraction (`rc()`, `right_contraction()`)
+- Scalar product (`scalar_product()`)
+- Commutator (`commutator()`, `x()`)
+- Anticommutator (`anticommutator()`)
+- Regressive product / meet (`regressive()`, `meet()`, `vee()`)
 - Grade projection (`grade(k)`)
 - Scalar extraction (`scalar()`)
 - Blade grade and product primitives in `algebra.rs`
@@ -61,7 +66,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `reject(B)` — rejection from blade B
 
 **Infrastructure**
-- Python test suite (188 tests)
+- Python test suite (215 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

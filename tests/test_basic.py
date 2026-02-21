@@ -2267,3 +2267,366 @@ def test_exp_rotor_norm():
         R = B.exp()
         assert abs(R.norm() - 1.0) < 1e-10, f"Failed for angle {angle}"
 
+
+# =============================================================================
+# RIGHT CONTRACTION TESTS
+# =============================================================================
+
+def test_right_contraction_vector_vector():
+    """Right contraction of two vectors equals their scalar product."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+
+    # For vectors: a ⌊ b = a · b = scalar
+    result = a.right_contraction(b)
+    expected = 1*4 + 2*5 + 3*6  # = 32
+
+    assert result.scalar() == expected
+    assert result.grade(0).approx_eq(result)  # purely scalar
+
+
+def test_right_contraction_bivector_vector():
+    """Right contraction e12 ⌊ e1 gives a vector."""
+    import largecrimsoncanine as lcc
+
+    # Bivector e12 (contains e1)
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    # Right contraction e12 ⌊ e1 = e12 * e1 (grade-selected)
+    # = e1*e2*e1 = -e1*e1*e2 = -e2
+    result = e12.right_contraction(e1)
+
+    expected = lcc.Multivector.from_vector([0.0, -1.0, 0.0])
+    assert result.approx_eq(expected)
+
+
+def test_right_contraction_vector_bivector():
+    """Right contraction v ⌊ B gives a vector."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    # e1 ⌊ e12 = e1 · e12 = e2 (right contraction)
+    result = e1.right_contraction(e12)
+
+    # Result should be a vector (grade 1)
+    assert result.grade(1).approx_eq(result)
+
+
+def test_right_contraction_rc_alias():
+    """rc() is an alias for right_contraction()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([3.0, 4.0])
+
+    assert a.rc(b).approx_eq(a.right_contraction(b))
+
+
+def test_right_contraction_dimension_mismatch():
+    """Right contraction with mismatched dimensions raises."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    with pytest.raises(ValueError):
+        a.right_contraction(b)
+
+
+# =============================================================================
+# SCALAR PRODUCT TESTS
+# =============================================================================
+
+def test_scalar_product_vectors():
+    """Scalar product of vectors equals their dot product."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+
+    # <a, b>_0 = a · b = 32
+    result = a.scalar_product(b)
+    assert result.scalar() == 32.0
+    assert result.approx_eq(lcc.Multivector.from_scalar(32.0, dims=3))
+
+
+def test_scalar_product_orthogonal_vectors():
+    """Scalar product of orthogonal vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    result = e1.scalar_product(e2)
+    assert result.scalar() == 0.0
+
+
+def test_scalar_product_bivectors():
+    """Scalar product of bivectors."""
+    import largecrimsoncanine as lcc
+
+    # e12 * e12 = -1 in the geometric product, scalar part is -1
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    result = e12.scalar_product(e12)
+
+    # e12 * e12 = e1 e2 e1 e2 = -e1 e1 e2 e2 = -1
+    assert result.scalar() == -1.0
+
+
+def test_scalar_product_different_grades():
+    """Scalar product of different grade elements is zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    # vector * bivector has no scalar part
+    result = v.scalar_product(B)
+    assert result.scalar() == 0.0
+
+
+def test_scalar_product_with_scalar():
+    """Scalar product of scalar with itself."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    result = s.scalar_product(s)
+
+    assert result.scalar() == 25.0
+
+
+# =============================================================================
+# COMMUTATOR TESTS
+# =============================================================================
+
+def test_commutator_orthogonal_vectors():
+    """Commutator of orthogonal vectors is their bivector."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    # [e1, e2] = (e1*e2 - e2*e1) / 2 = (e12 - (-e12)) / 2 = e12
+    result = e1.commutator(e2)
+
+    expected = lcc.Multivector.from_bivector([1.0], dims=2)
+    assert result.approx_eq(expected)
+
+
+def test_commutator_self_is_zero():
+    """Commutator of any element with itself is zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    # [A, A] = 0 always
+    result = v.commutator(v)
+    assert result.approx_eq(lcc.Multivector.zero(3))
+
+
+def test_commutator_scalars_is_zero():
+    """Commutator involving scalars is zero (scalars commute with everything)."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(3.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    # [s, v] = 0
+    result = s.commutator(v)
+    assert result.approx_eq(lcc.Multivector.zero(3))
+
+
+def test_commutator_antisymmetric():
+    """Commutator is antisymmetric: [A, B] = -[B, A]."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([3.0, 4.0])
+
+    ab = a.commutator(b)
+    ba = b.commutator(a)
+
+    # [A, B] + [B, A] = 0
+    assert (ab + ba).approx_eq(lcc.Multivector.zero(2))
+
+
+def test_commutator_x_alias():
+    """x() is an alias for commutator()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 1.0])
+
+    assert a.x(b).approx_eq(a.commutator(b))
+
+
+# =============================================================================
+# ANTICOMMUTATOR TESTS
+# =============================================================================
+
+def test_anticommutator_orthogonal_vectors():
+    """Anticommutator of orthogonal vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    # {e1, e2} = (e1*e2 + e2*e1) / 2 = (e12 + (-e12)) / 2 = 0
+    result = e1.anticommutator(e2)
+    assert result.approx_eq(lcc.Multivector.zero(2))
+
+
+def test_anticommutator_same_vector():
+    """Anticommutator of vector with itself gives scalar."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+
+    # {v, v} = (v*v + v*v) / 2 = v*v = ||v||² = 25
+    result = v.anticommutator(v)
+    expected = lcc.Multivector.from_scalar(25.0, dims=2)
+    assert result.approx_eq(expected)
+
+
+def test_anticommutator_symmetric():
+    """Anticommutator is symmetric: {A, B} = {B, A}."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([3.0, 4.0])
+
+    ab = a.anticommutator(b)
+    ba = b.anticommutator(a)
+
+    assert ab.approx_eq(ba)
+
+
+def test_commutator_anticommutator_sum():
+    """Commutator + anticommutator = geometric product."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([3.0, 4.0])
+
+    # [A, B] + {A, B} = AB
+    comm = a.commutator(b)
+    anticomm = a.anticommutator(b)
+    ab = a * b
+
+    assert (comm + anticomm).approx_eq(ab)
+
+
+# =============================================================================
+# REGRESSIVE PRODUCT (MEET) TESTS
+# =============================================================================
+
+def test_regressive_pseudoscalar_with_anything():
+    """Pseudoscalar ∨ A = A (pseudoscalar is identity for meet)."""
+    import largecrimsoncanine as lcc
+
+    I = lcc.Multivector.pseudoscalar(3)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    result = I.regressive(v)
+    assert result.approx_eq(v)
+
+
+def test_regressive_two_planes():
+    """Meet of two planes should give their intersection (a line)."""
+    import largecrimsoncanine as lcc
+
+    # In 3D, planes are represented by bivectors (their duals are vectors)
+    # Plane 1: spanned by e1, e2 (normal is e3) -> represented as e12
+    # Plane 2: spanned by e1, e3 (normal is e2) -> represented as e13
+    # Their intersection is the e1 axis
+
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    e13 = lcc.Multivector.from_bivector([0.0, 1.0, 0.0], dims=3)
+
+    # Meet should give a vector (their line of intersection)
+    result = e12.regressive(e13)
+
+    # Result should be grade 1 (a vector)
+    grade1 = result.grade(1)
+    assert grade1.norm() > 0.1  # non-zero
+    assert result.approx_eq(grade1)  # purely grade 1
+
+
+def test_regressive_meet_alias():
+    """meet() is an alias for regressive()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    b = lcc.Multivector.from_bivector([0.0, 1.0, 0.0], dims=3)
+
+    assert a.meet(b).approx_eq(a.regressive(b))
+
+
+def test_regressive_vee_alias():
+    """vee() is an alias for regressive()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    b = lcc.Multivector.from_bivector([0.0, 1.0, 0.0], dims=3)
+
+    assert a.vee(b).approx_eq(a.regressive(b))
+
+
+def test_regressive_dimension_mismatch():
+    """Regressive with mismatched dimensions raises."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])
+    b = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    with pytest.raises(ValueError):
+        a.regressive(b)
+
+
+# =============================================================================
+# JOIN TESTS
+# =============================================================================
+
+def test_join_is_outer_product():
+    """join() should equal outer_product()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    assert a.join(b).approx_eq(a.outer_product(b))
+    assert a.join(b).approx_eq(a ^ b)
+
+
+def test_join_two_vectors():
+    """Join of two vectors gives their plane (bivector)."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    result = e1.join(e2)
+    expected = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    assert result.approx_eq(expected)
+
+
+def test_meet_join_duality():
+    """Meet and join are dual operations: (A ∨ B)* = A* ∧ B*."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    b = lcc.Multivector.from_bivector([0.0, 1.0, 0.0], dims=3)
+
+    # (A ∨ B)* = A* ∧ B*  by definition
+    meet_result = a.meet(b)
+    lhs = meet_result.dual()
+    rhs = a.dual().join(b.dual())
+
+    assert lhs.approx_eq(rhs)
+

@@ -13,4 +13,3 @@ fn largecrimsoncanine(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Multivector>()?;
     Ok(())
 }
-
