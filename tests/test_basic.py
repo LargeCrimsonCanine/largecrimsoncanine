@@ -613,3 +613,206 @@ def test_norm_bivector():
     assert e12.norm_squared() == 1.0
     assert e12.norm() == 1.0
 
+
+# =============================================================================
+# CONSTRUCTOR TESTS
+# =============================================================================
+
+def test_zero_constructor():
+    """Multivector.zero(dims) creates a zero multivector."""
+    import largecrimsoncanine as lcc
+    z = lcc.Multivector.zero(3)
+    assert len(z) == 8  # 2^3 = 8 coefficients
+    assert all(c == 0.0 for c in z.to_list())
+
+
+def test_zero_constructor_dimension_error():
+    """Multivector.zero(0) should raise."""
+    import largecrimsoncanine as lcc
+    with pytest.raises(ValueError):
+        lcc.Multivector.zero(0)
+
+
+def test_from_scalar_constructor():
+    """Multivector.from_scalar creates a pure scalar."""
+    import largecrimsoncanine as lcc
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.scalar() == 5.0
+    assert s[1] == 0.0  # no e1
+    assert s[2] == 0.0  # no e2
+    assert len(s) == 8
+
+
+def test_from_vector_constructor():
+    """Multivector.from_vector creates a vector from coordinates."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    # Should be 1*e1 + 2*e2 + 3*e3 in Cl(3)
+    assert len(v) == 8  # 2^3
+    assert v[0] == 0.0  # no scalar
+    assert v[1] == 1.0  # e1 coefficient
+    assert v[2] == 2.0  # e2 coefficient
+    assert v[4] == 3.0  # e3 coefficient (index 4 = 0b100)
+
+
+def test_from_vector_2d():
+    """from_vector with 2 coordinates creates 2D vector."""
+    import largecrimsoncanine as lcc
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    assert len(v) == 4  # 2^2
+    assert v[1] == 3.0  # e1
+    assert v[2] == 4.0  # e2
+    assert v.norm() == 5.0  # 3-4-5 triangle
+
+
+def test_from_vector_empty_error():
+    """from_vector with empty list should raise."""
+    import largecrimsoncanine as lcc
+    with pytest.raises(ValueError):
+        lcc.Multivector.from_vector([])
+
+
+def test_basis_constructor():
+    """Multivector.basis creates a single basis vector."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=3)
+    e2 = lcc.Multivector.basis(2, dims=3)
+    e3 = lcc.Multivector.basis(3, dims=3)
+
+    assert e1[1] == 1.0 and e1[2] == 0.0 and e1[4] == 0.0
+    assert e2[1] == 0.0 and e2[2] == 1.0 and e2[4] == 0.0
+    assert e3[1] == 0.0 and e3[2] == 0.0 and e3[4] == 1.0
+
+
+def test_basis_index_error():
+    """Multivector.basis with invalid index should raise."""
+    import largecrimsoncanine as lcc
+    with pytest.raises(ValueError):
+        lcc.Multivector.basis(0, dims=3)  # 0 is invalid
+    with pytest.raises(ValueError):
+        lcc.Multivector.basis(4, dims=3)  # 4 > dims
+
+
+def test_basis_squares_to_one():
+    """Basis vectors should square to 1 (Euclidean)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=3)
+    e2 = lcc.Multivector.basis(2, dims=3)
+
+    assert (e1 * e1).scalar() == 1.0
+    assert (e2 * e2).scalar() == 1.0
+
+
+def test_basis_anticommute():
+    """Different basis vectors should anticommute."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.basis(1, dims=3)
+    e2 = lcc.Multivector.basis(2, dims=3)
+
+    e1e2 = e1 * e2
+    e2e1 = e2 * e1
+
+    # e1*e2 + e2*e1 should be zero
+    diff = e1e2 + e2e1
+    assert all(abs(c) < 1e-10 for c in diff.to_list())
+
+
+def test_pseudoscalar_constructor():
+    """Multivector.pseudoscalar creates the unit pseudoscalar."""
+    import largecrimsoncanine as lcc
+    I2 = lcc.Multivector.pseudoscalar(2)
+    I3 = lcc.Multivector.pseudoscalar(3)
+
+    # In 2D, pseudoscalar is e12 at index 3
+    assert I2[3] == 1.0
+    assert I2[0] == 0.0 and I2[1] == 0.0 and I2[2] == 0.0
+
+    # In 3D, pseudoscalar is e123 at index 7
+    assert I3[7] == 1.0
+
+
+def test_pseudoscalar_squares():
+    """Pseudoscalar squared depends on dimension."""
+    import largecrimsoncanine as lcc
+    # In 2D: (e12)² = e1*e2*e1*e2 = -e1*e1*e2*e2 = -1
+    I2 = lcc.Multivector.pseudoscalar(2)
+    I2_sq = I2 * I2
+    assert I2_sq.scalar() == -1.0
+
+    # In 3D: (e123)² = e1*e2*e3*e1*e2*e3 = -1
+    I3 = lcc.Multivector.pseudoscalar(3)
+    I3_sq = I3 * I3
+    assert I3_sq.scalar() == -1.0
+
+
+def test_from_bivector_constructor():
+    """Multivector.from_bivector creates a bivector from components."""
+    import largecrimsoncanine as lcc
+    # In 3D, bivector components are [e12, e13, e23]
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    # e12 is at index 3 (0b011)
+    assert B[3] == 1.0
+    # e13 is at index 5 (0b101)
+    assert B[5] == 0.0
+    # e23 is at index 6 (0b110)
+    assert B[6] == 0.0
+
+
+def test_from_bivector_all_components():
+    """from_bivector with all non-zero components."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    assert B[3] == 1.0  # e12
+    assert B[5] == 2.0  # e13
+    assert B[6] == 3.0  # e23
+
+
+def test_from_bivector_2d():
+    """from_bivector in 2D has only one component."""
+    import largecrimsoncanine as lcc
+    B = lcc.Multivector.from_bivector([5.0], dims=2)
+
+    assert B[3] == 5.0  # e12
+    assert len(B) == 4
+
+
+def test_from_bivector_wrong_components_error():
+    """from_bivector with wrong number of components should raise."""
+    import largecrimsoncanine as lcc
+    with pytest.raises(ValueError):
+        lcc.Multivector.from_bivector([1.0, 2.0], dims=3)  # needs 3
+
+
+def test_constructors_work_with_operations():
+    """Verify constructors produce multivectors that work with operations."""
+    import largecrimsoncanine as lcc
+
+    # Build a vector using from_vector
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+
+    # Build the same vector using basis
+    e1 = lcc.Multivector.basis(1, dims=2)
+    e2 = lcc.Multivector.basis(2, dims=2)
+    v2 = e1 * 3.0 + e2 * 4.0
+
+    # Should be equal
+    assert v.approx_eq(v2)
+
+    # Norm should work
+    assert abs(v.norm() - 5.0) < 1e-10
+
+
+def test_constructor_with_wedge():
+    """Basis vectors wedged should equal pseudoscalar."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.basis(1, dims=2)
+    e2 = lcc.Multivector.basis(2, dims=2)
+    I = lcc.Multivector.pseudoscalar(2)
+
+    # e1 ^ e2 should equal the pseudoscalar
+    e1_wedge_e2 = e1 ^ e2
+    assert e1_wedge_e2.approx_eq(I)
+

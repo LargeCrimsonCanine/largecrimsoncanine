@@ -63,6 +63,164 @@ impl Multivector {
         self.coeffs[0]
     }
 
+    // =========================================================================
+    // CONSTRUCTORS (static methods)
+    // =========================================================================
+
+    /// Create a zero multivector in the given dimension.
+    ///
+    /// Example:
+    /// ```python
+    /// zero = Multivector.zero(3)  # Zero in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn zero(dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1"
+            ));
+        }
+        let size = 1usize << dims;
+        Ok(Multivector { coeffs: vec![0.0; size], dims })
+    }
+
+    /// Create a scalar (grade-0) multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// five = Multivector.from_scalar(5.0, dims=3)  # 5.0 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn from_scalar(value: f64, dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1"
+            ));
+        }
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        coeffs[0] = value;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create a vector (grade-1) multivector from coordinates.
+    ///
+    /// The length of coords determines the dimension.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])  # e1 + 2*e2 + 3*e3 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn from_vector(coords: Vec<f64>) -> PyResult<Self> {
+        let dims = coords.len();
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "coords must not be empty; provide at least one coordinate"
+            ));
+        }
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        // Basis vectors have indices 1, 2, 4, 8, ... (powers of 2)
+        for (i, &c) in coords.iter().enumerate() {
+            coeffs[1 << i] = c;
+        }
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create a single basis vector e_i (1-indexed).
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.basis(1, dims=3)  # e1 in Cl(3)
+    /// e2 = Multivector.basis(2, dims=3)  # e2 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn basis(index: usize, dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1"
+            ));
+        }
+        if index == 0 || index > dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "basis index must be between 1 and {} (got {}); \
+                use index=1 for e1, index=2 for e2, etc.",
+                dims, index
+            )));
+        }
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        // e_i has coefficient index 2^(i-1) (e1=1, e2=2, e3=4, ...)
+        coeffs[1 << (index - 1)] = 1.0;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create the unit pseudoscalar (highest grade element) for the given dimension.
+    ///
+    /// The pseudoscalar is e1 ∧ e2 ∧ ... ∧ en, which has index 2^n - 1.
+    ///
+    /// Example:
+    /// ```python
+    /// I = Multivector.pseudoscalar(3)  # e123 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn pseudoscalar(dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1"
+            ));
+        }
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        // Pseudoscalar has all bits set: index = 2^n - 1
+        coeffs[size - 1] = 1.0;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create a bivector (grade-2) from components.
+    ///
+    /// For 2D: provide [e12_coeff]
+    /// For 3D: provide [e12_coeff, e13_coeff, e23_coeff]
+    /// For 4D: provide [e12, e13, e14, e23, e24, e34]
+    ///
+    /// Components are in lexicographic order of basis vector indices.
+    ///
+    /// Example:
+    /// ```python
+    /// B = Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)  # e12 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn from_bivector(components: Vec<f64>, dims: usize) -> PyResult<Self> {
+        if dims < 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 2 for bivectors"
+            ));
+        }
+        // Number of grade-2 blades is C(n, 2) = n*(n-1)/2
+        let expected_len = dims * (dims - 1) / 2;
+        if components.len() != expected_len {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "expected {} bivector components for Cl({}) (got {}); \
+                components are [e12, e13, e23, ...] in lexicographic order",
+                expected_len, dims, components.len()
+            )));
+        }
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        // Iterate through grade-2 blades in lexicographic order
+        let mut comp_idx = 0;
+        for i in 0..dims {
+            for j in (i + 1)..dims {
+                // Blade index for e_i ∧ e_j where i < j
+                let blade_idx = (1 << i) | (1 << j);
+                coeffs[blade_idx] = components[comp_idx];
+                comp_idx += 1;
+            }
+        }
+        Ok(Multivector { coeffs, dims })
+    }
+
     /// Project onto a specific grade.
     ///
     /// Returns a new multivector containing only the grade-k components.
