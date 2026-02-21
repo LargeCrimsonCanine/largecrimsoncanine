@@ -41,7 +41,8 @@ impl Multivector {
         let len = coeffs.len();
         if len == 0 {
             return Err(pyo3::exceptions::PyValueError::new_err(
-                "coeffs must not be empty",
+                "coeffs must not be empty; provide a list of coefficients \
+                (e.g., [1.0] for a scalar, [0.0, 1.0, 0.0, 0.0] for e1 in 2D)",
             ));
         }
         if len & (len - 1) != 0 {
@@ -98,7 +99,8 @@ impl Multivector {
     pub fn geometric_product(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left is Cl({}), right is Cl({})",
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
                 self.dims, other.dims
             )));
         }
@@ -134,7 +136,8 @@ impl Multivector {
     pub fn outer_product(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left is Cl({}), right is Cl({})",
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
                 self.dims, other.dims
             )));
         }
@@ -174,7 +177,8 @@ impl Multivector {
     pub fn left_contraction(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left is Cl({}), right is Cl({})",
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
                 self.dims, other.dims
             )));
         }
@@ -252,7 +256,8 @@ impl Multivector {
         let idx = if index < 0 { len + index } else { index };
         if idx < 0 || idx >= len {
             Err(pyo3::exceptions::PyIndexError::new_err(
-                format!("index {} out of range for {} coefficients", index, len)
+                format!("index {} out of range for {} coefficients \
+                (valid range: 0 to {}, or -{} to -1)", index, len, len - 1, len)
             ))
         } else {
             Ok(self.coeffs[idx as usize])
@@ -309,7 +314,8 @@ impl Multivector {
     pub fn __add__(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left is Cl({}), right is Cl({})",
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
                 self.dims, other.dims
             )));
         }
@@ -326,7 +332,8 @@ impl Multivector {
     pub fn __sub__(&self, other: &Multivector) -> PyResult<Self> {
         if self.dims != other.dims {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left is Cl({}), right is Cl({})",
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
                 self.dims, other.dims
             )));
         }
@@ -443,7 +450,8 @@ impl Multivector {
         let n = self.norm();
         if n == 0.0 {
             Err(pyo3::exceptions::PyValueError::new_err(
-                "cannot normalize zero multivector"
+                "cannot normalize zero multivector; normalization requires non-zero norm \
+                (check that your multivector has at least one non-zero coefficient)"
             ))
         } else {
             Ok(self.scale(1.0 / n))

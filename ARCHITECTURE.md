@@ -123,7 +123,9 @@ When visualization features are added (Jupyter integration, plotting), they must
 
 ### Colorblind-Safe Palette
 
-The default palette uses colors distinguishable by users with common forms of color blindness (deuteranopia, protanopia, tritanopia). Based on the Wong palette [VERIFY]:
+The default palette uses colors distinguishable by users with common forms of color blindness (deuteranopia, protanopia, tritanopia). Based on the Wong palette [VERIFY].
+
+The following table defines the 8 standard colors with their hex codes, RGB values, and intended use cases:
 
 | Name    | Hex       | RGB             | Use case           |
 |---------|-----------|-----------------|---------------------|
