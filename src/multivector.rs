@@ -446,14 +446,22 @@ impl Multivector {
         }
     }
 
-    /// Division by scalar.
-    pub fn __truediv__(&self, other: f64) -> PyResult<Self> {
-        if other == 0.0 {
-            Err(pyo3::exceptions::PyZeroDivisionError::new_err(
-                "cannot divide multivector by zero"
-            ))
+    /// Division: scalar division or geometric division (A * B⁻¹).
+    pub fn __truediv__(&self, other: &Bound<'_, PyAny>) -> PyResult<Self> {
+        if let Ok(mv) = other.extract::<PyRef<Multivector>>() {
+            self.div(&mv)
+        } else if let Ok(scalar) = other.extract::<f64>() {
+            if scalar == 0.0 {
+                Err(pyo3::exceptions::PyZeroDivisionError::new_err(
+                    "cannot divide multivector by zero"
+                ))
+            } else {
+                Ok(self.scale(1.0 / scalar))
+            }
         } else {
-            Ok(self.scale(1.0 / other))
+            Err(pyo3::exceptions::PyTypeError::new_err(
+                "unsupported operand type for /: expected Multivector or float"
+            ))
         }
     }
 
@@ -614,6 +622,51 @@ impl Multivector {
         } else {
             Ok(self.scale(1.0 / n))
         }
+    }
+
+    /// Compute the inverse of this multivector.
+    ///
+    /// For a blade or versor A: A⁻¹ = Ã / (A * Ã) where Ã is the reverse.
+    /// This satisfies A * A⁻¹ = 1.
+    ///
+    /// Works correctly for:
+    /// - Scalars: s⁻¹ = 1/s
+    /// - Vectors: v⁻¹ = v / |v|²
+    /// - Blades: B⁻¹ = B̃ / (B * B̃)
+    /// - Versors (products of non-null vectors)
+    ///
+    /// Raises ValueError if the multivector has zero norm (not invertible).
+    ///
+    /// Note: For general multivectors that are not blades or versors,
+    /// this formula may not produce a true inverse. Use with caution
+    /// for mixed-grade multivectors.
+    ///
+    /// Reference: Dorst et al. ch.4 [VERIFY]
+    pub fn inverse(&self) -> PyResult<Self> {
+        let norm_sq = self.norm_squared();
+        if norm_sq == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot invert multivector with zero norm; \
+                only non-null blades and versors are invertible"
+            ));
+        }
+        // A⁻¹ = Ã / (A * Ã) = Ã / norm_squared
+        Ok(self.reverse().scale(1.0 / norm_sq))
+    }
+
+    /// Compute A / B as A * B⁻¹ (right division).
+    ///
+    /// Raises ValueError if B is not invertible.
+    pub fn div(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+        let other_inv = other.inverse()?;
+        self.geometric_product(&other_inv)
     }
 }
 
