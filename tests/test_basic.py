@@ -1140,3 +1140,256 @@ def test_product_inverse():
 
     assert AB_inv.approx_eq(B_inv_A_inv)
 
+
+# =============================================================================
+# ROTOR TESTS
+# =============================================================================
+
+
+def test_rotor_from_vectors_basic():
+    """Create a rotor from two orthogonal basis vectors."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotor should be unit norm
+    assert abs(R.norm() - 1.0) < 1e-10
+
+
+def test_rotor_is_rotor():
+    """is_rotor should identify unit rotors."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    assert R.is_rotor()
+
+    # Non-unit multivector should not be a rotor
+    v = lcc.Multivector.from_vector([2.0, 0.0])
+    assert not v.is_rotor()
+
+
+def test_rotor_sandwich_rotates_90_degrees():
+    """Rotor from e1 to e2 should rotate e1 to e2."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    rotated = R.sandwich(e1)
+
+    assert rotated.approx_eq(e2)
+
+
+def test_rotor_sandwich_rotates_arbitrary_vector():
+    """Rotor should rotate any vector in the same plane."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    # 45-degree rotation
+    cos45 = math.cos(math.pi / 4)
+    sin45 = math.sin(math.pi / 4)
+    a = lcc.Multivector.from_vector([1.0, 0.0])
+    b = lcc.Multivector.from_vector([cos45, sin45])
+
+    R = lcc.Multivector.rotor_from_vectors(a, b)
+    rotated = R.sandwich(e1)
+
+    expected = lcc.Multivector.from_vector([cos45, sin45])
+    assert rotated.approx_eq(expected)
+
+
+def test_rotor_apply_alias():
+    """apply() should be an alias for sandwich()."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    result_sandwich = R.sandwich(e1)
+    result_apply = R.apply(e1)
+
+    assert result_sandwich.approx_eq(result_apply)
+
+
+def test_rotor_preserves_orthogonal_vector():
+    """Rotation in xy-plane should not affect z-component."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    rotated_e3 = R.sandwich(e3)
+
+    # e3 should be unchanged by rotation in xy-plane
+    assert rotated_e3.approx_eq(e3)
+
+
+def test_rotor_composition():
+    """Two rotations should compose correctly."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    # R1 rotates e1 to e2 (90° in xy-plane)
+    R1 = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # R2 rotates e2 to e3 (90° in yz-plane)
+    R2 = lcc.Multivector.rotor_from_vectors(e2, e3)
+
+    # Composed rotor: first R1, then R2
+    # Rotor composition: R_combined = R2 * R1
+    R_combined = R2 * R1
+
+    # Apply R1 then R2 sequentially
+    step1 = R1.sandwich(e1)  # e1 -> e2
+    step2 = R2.sandwich(step1)  # e2 -> e3
+
+    # Apply combined rotor
+    combined = R_combined.sandwich(e1)
+
+    assert combined.approx_eq(step2)
+
+
+def test_rotor_inverse_reverses_rotation():
+    """R⁻¹ should reverse the rotation of R."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    R_inv = R.inverse()
+
+    # R rotates e1 to e2
+    rotated = R.sandwich(e1)
+    assert rotated.approx_eq(e2)
+
+    # R⁻¹ should rotate e2 back to e1
+    back = R_inv.sandwich(rotated)
+    assert back.approx_eq(e1)
+
+
+def test_rotor_same_vector():
+    """Rotor from a vector to itself should be identity (scalar 1)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e1)
+
+    # Should be close to scalar 1
+    one = lcc.Multivector.from_scalar(1.0, dims=3)
+    assert R.approx_eq(one)
+
+
+def test_rotor_anti_parallel_vectors():
+    """Rotor from a to -a should be 180° rotation."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    neg_e1 = -e1
+
+    R = lcc.Multivector.rotor_from_vectors(e1, neg_e1)
+
+    # Should be a valid unit rotor
+    assert R.is_rotor()
+
+    # Applying twice should bring back to original (360°)
+    double_rotated = R.sandwich(R.sandwich(e1))
+    assert double_rotated.approx_eq(e1)
+
+
+def test_rotor_from_non_unit_vectors():
+    """rotor_from_vectors should work with non-unit vectors."""
+    import largecrimsoncanine as lcc
+    a = lcc.Multivector.from_vector([3.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 5.0])
+
+    R = lcc.Multivector.rotor_from_vectors(a, b)
+
+    # Should still be unit rotor
+    assert R.is_rotor()
+
+    # Should rotate direction of a to direction of b
+    a_unit = a.normalized()
+    rotated = R.sandwich(a_unit)
+    b_unit = b.normalized()
+    assert rotated.approx_eq(b_unit)
+
+
+def test_rotor_dimension_mismatch():
+    """rotor_from_vectors with mismatched dimensions should raise."""
+    import largecrimsoncanine as lcc
+    v2 = lcc.Multivector.from_vector([1.0, 0.0])
+    v3 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    with pytest.raises(ValueError):
+        lcc.Multivector.rotor_from_vectors(v2, v3)
+
+
+def test_rotor_zero_vector_raises():
+    """rotor_from_vectors with zero vector should raise."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    zero = lcc.Multivector.zero(2)
+
+    with pytest.raises(ValueError):
+        lcc.Multivector.rotor_from_vectors(zero, e1)
+
+    with pytest.raises(ValueError):
+        lcc.Multivector.rotor_from_vectors(e1, zero)
+
+
+def test_sandwich_dimension_mismatch():
+    """sandwich with mismatched dimensions should raise."""
+    import largecrimsoncanine as lcc
+    e1_2d = lcc.Multivector.from_vector([1.0, 0.0])
+    e2_2d = lcc.Multivector.from_vector([0.0, 1.0])
+    v_3d = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1_2d, e2_2d)
+
+    with pytest.raises(ValueError):
+        R.sandwich(v_3d)
+
+
+def test_rotor_rotates_bivector():
+    """Rotors should correctly rotate bivectors (planes)."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    # e12 bivector (xy-plane)
+    e12 = e1 ^ e2
+
+    # Rotate around z-axis by 90° (using rotation from e1 to e2)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotating the xy-plane around z should leave it unchanged
+    rotated_plane = R.sandwich(e12)
+    assert rotated_plane.approx_eq(e12)
+
+
+def test_rotor_double_cover():
+    """R and -R represent the same rotation."""
+    import largecrimsoncanine as lcc
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+    neg_R = -R
+
+    # Both should give the same rotation result
+    result_R = R.sandwich(e1)
+    result_neg_R = neg_R.sandwich(e1)
+
+    assert result_R.approx_eq(result_neg_R)
+
