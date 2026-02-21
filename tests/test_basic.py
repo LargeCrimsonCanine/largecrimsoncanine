@@ -2959,3 +2959,284 @@ def test_slerp_dimension_mismatch():
     with pytest.raises(ValueError):
         R1.slerp(R2, 0.5)
 
+
+# =============================================================================
+# ANGLE_BETWEEN TESTS
+# =============================================================================
+
+def test_angle_between_orthogonal():
+    """Angle between orthogonal vectors is π/2."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    angle = e1.angle_between(e2)
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_angle_between_same_direction():
+    """Angle between parallel vectors is 0."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+
+    angle = v1.angle_between(v2)
+    assert abs(angle) < 1e-10
+
+
+def test_angle_between_opposite_direction():
+    """Angle between antiparallel vectors is π."""
+    import largecrimsoncanine as lcc
+    import math
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([-1.0, 0.0, 0.0])
+
+    angle = v1.angle_between(v2)
+    assert abs(angle - math.pi) < 1e-10
+
+
+def test_angle_between_45_degrees():
+    """Angle between 45-degree vectors."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    diagonal = lcc.Multivector.from_vector([1.0, 1.0])
+
+    angle = e1.angle_between(diagonal)
+    assert abs(angle - math.pi / 4) < 1e-10
+
+
+def test_angle_between_zero_vector_raises():
+    """angle_between with zero vector raises."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0])
+    z = lcc.Multivector.zero(2)
+
+    with pytest.raises(ValueError):
+        v.angle_between(z)
+
+
+def test_angle_between_non_vector_raises():
+    """angle_between with non-vector raises."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+
+    with pytest.raises(ValueError):
+        v.angle_between(B)
+
+
+# =============================================================================
+# IS_PARALLEL TESTS
+# =============================================================================
+
+def test_is_parallel_same_direction():
+    """Parallel vectors in same direction."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+
+    assert v1.is_parallel(v2)
+
+
+def test_is_parallel_opposite_direction():
+    """Parallel vectors in opposite direction."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0])
+    v2 = lcc.Multivector.from_vector([-2.0, -4.0])
+
+    assert v1.is_parallel(v2)
+
+
+def test_is_parallel_orthogonal_not_parallel():
+    """Orthogonal vectors are not parallel."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    assert not e1.is_parallel(e2)
+
+
+def test_is_parallel_general_not_parallel():
+    """General non-parallel vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([1.0, 1.0])
+
+    assert not v1.is_parallel(v2)
+
+
+# =============================================================================
+# IS_SAME_DIRECTION / IS_ANTIPARALLEL TESTS
+# =============================================================================
+
+def test_is_same_direction_true():
+    """Vectors pointing same way."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0])
+    v2 = lcc.Multivector.from_vector([2.0, 4.0])
+
+    assert v1.is_same_direction(v2)
+    assert not v1.is_antiparallel(v2)
+
+
+def test_is_antiparallel_true():
+    """Vectors pointing opposite ways."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0])
+    v2 = lcc.Multivector.from_vector([-1.0, -2.0])
+
+    assert v1.is_antiparallel(v2)
+    assert not v1.is_same_direction(v2)
+
+
+def test_is_same_direction_non_parallel():
+    """Non-parallel vectors are neither same direction nor antiparallel."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([1.0, 1.0])
+
+    assert not v1.is_same_direction(v2)
+    assert not v1.is_antiparallel(v2)
+
+
+# =============================================================================
+# IS_ORTHOGONAL TESTS
+# =============================================================================
+
+def test_is_orthogonal_basis_vectors():
+    """Basis vectors are orthogonal."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    assert e1.is_orthogonal(e2)
+    assert e1.is_orthogonal(e3)
+    assert e2.is_orthogonal(e3)
+
+
+def test_is_orthogonal_parallel_not_orthogonal():
+    """Parallel vectors are not orthogonal."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([2.0, 0.0])
+
+    assert not v1.is_orthogonal(v2)
+
+
+def test_is_orthogonal_general():
+    """General orthogonal vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 1.0])
+    v2 = lcc.Multivector.from_vector([1.0, -1.0])
+
+    # v1 · v2 = 1*1 + 1*(-1) = 0
+    assert v1.is_orthogonal(v2)
+
+
+def test_is_orthogonal_not_orthogonal():
+    """Non-orthogonal vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([1.0, 1.0])
+
+    assert not v1.is_orthogonal(v2)
+
+
+# =============================================================================
+# COS_ANGLE / SIN_ANGLE TESTS
+# =============================================================================
+
+def test_cos_angle_parallel():
+    """cos(0) = 1 for parallel vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([2.0, 0.0])
+
+    assert abs(v1.cos_angle(v2) - 1.0) < 1e-10
+
+
+def test_cos_angle_orthogonal():
+    """cos(π/2) = 0 for orthogonal vectors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    assert abs(e1.cos_angle(e2)) < 1e-10
+
+
+def test_cos_angle_antiparallel():
+    """cos(π) = -1 for antiparallel vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([-1.0, 0.0])
+
+    assert abs(v1.cos_angle(v2) - (-1.0)) < 1e-10
+
+
+def test_sin_angle_parallel():
+    """sin(0) = 0 for parallel vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([2.0, 0.0])
+
+    assert abs(v1.sin_angle(v2)) < 1e-10
+
+
+def test_sin_angle_orthogonal():
+    """sin(π/2) = 1 for orthogonal vectors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0])
+
+    assert abs(e1.sin_angle(e2) - 1.0) < 1e-10
+
+
+def test_sin_angle_45_degrees():
+    """sin(π/4) = 1/√2 for 45-degree angle."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0])
+    diagonal = lcc.Multivector.from_vector([1.0, 1.0])
+
+    expected = math.sin(math.pi / 4)  # 1/√2
+    assert abs(e1.sin_angle(diagonal) - expected) < 1e-10
+
+
+def test_cos_sin_identity():
+    """cos²θ + sin²θ = 1 for any angle."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = lcc.Multivector.from_vector([4.0, -1.0, 2.0])
+
+    c = v1.cos_angle(v2)
+    s = v1.sin_angle(v2)
+
+    assert abs(c*c + s*s - 1.0) < 1e-10
+

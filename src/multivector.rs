@@ -1343,6 +1343,197 @@ impl Multivector {
     }
 
     // =========================================================================
+    // GEOMETRIC PREDICATES
+    // =========================================================================
+
+    /// Compute the angle between two vectors.
+    ///
+    /// Returns the angle in radians between this vector and other.
+    /// Both must be grade-1 multivectors (vectors).
+    ///
+    /// The angle is computed as: θ = arccos(a · b / (|a| |b|))
+    ///
+    /// Raises ValueError if either multivector is not a vector or has zero norm.
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn angle_between(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        // Check both are vectors (grade 1)
+        let self_grades = self.grades();
+        let other_grades = other.grades();
+
+        if self_grades != vec![1] {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "first operand must be a vector (grade 1); \
+                use grade(1) to extract the vector part if needed",
+            ));
+        }
+        if other_grades != vec![1] {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "second operand must be a vector (grade 1); \
+                use grade(1) to extract the vector part if needed",
+            ));
+        }
+
+        let norm_a = self.norm();
+        let norm_b = other.norm();
+
+        if norm_a == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "first vector has zero norm; angle is undefined for zero vectors",
+            ));
+        }
+        if norm_b == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "second vector has zero norm; angle is undefined for zero vectors",
+            ));
+        }
+
+        // Compute dot product (scalar part of geometric product for vectors)
+        let gp = self.geometric_product(other)?;
+        let dot = gp.scalar();
+
+        // cos(θ) = a · b / (|a| |b|)
+        let cos_theta = (dot / (norm_a * norm_b)).clamp(-1.0, 1.0);
+        Ok(cos_theta.acos())
+    }
+
+    /// Check if two vectors are parallel (same or opposite direction).
+    ///
+    /// Two vectors are parallel if their wedge product is zero.
+    ///
+    /// Returns true if the vectors are parallel within tolerance.
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn is_parallel(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        // a ∧ b = 0 means parallel
+        let wedge = self.outer_product(other)?;
+        Ok(wedge.norm() <= tol)
+    }
+
+    /// Check if two vectors point in the same direction.
+    ///
+    /// Returns true if the vectors are parallel AND their dot product is positive.
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn is_same_direction(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if !self.is_parallel(other, tol)? {
+            return Ok(false);
+        }
+
+        // Check dot product is positive
+        let gp = self.geometric_product(other)?;
+        Ok(gp.scalar() > 0.0)
+    }
+
+    /// Check if two vectors point in opposite directions.
+    ///
+    /// Returns true if the vectors are parallel AND their dot product is negative.
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn is_antiparallel(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if !self.is_parallel(other, tol)? {
+            return Ok(false);
+        }
+
+        // Check dot product is negative
+        let gp = self.geometric_product(other)?;
+        Ok(gp.scalar() < 0.0)
+    }
+
+    /// Check if two vectors are orthogonal (perpendicular).
+    ///
+    /// Two vectors are orthogonal if their dot product (scalar product) is zero.
+    ///
+    /// Returns true if the vectors are orthogonal within tolerance.
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn is_orthogonal(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        // a · b = 0 means orthogonal (for vectors, this is the scalar part of gp)
+        let gp = self.geometric_product(other)?;
+        Ok(gp.scalar().abs() <= tol)
+    }
+
+    /// Compute the cosine of the angle between two vectors.
+    ///
+    /// More efficient than angle_between() when you only need the cosine.
+    /// Returns a value in [-1, 1].
+    ///
+    /// Raises ValueError if either vector has zero norm.
+    pub fn cos_angle(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        let norm_a = self.norm();
+        let norm_b = other.norm();
+
+        if norm_a == 0.0 || norm_b == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot compute angle for zero vector",
+            ));
+        }
+
+        let gp = self.geometric_product(other)?;
+        let dot = gp.scalar();
+
+        Ok((dot / (norm_a * norm_b)).clamp(-1.0, 1.0))
+    }
+
+    /// Compute the sine of the angle between two vectors.
+    ///
+    /// Uses the magnitude of the wedge product: |a ∧ b| = |a| |b| sin(θ)
+    /// Returns a value in [0, 1] (always non-negative).
+    ///
+    /// Raises ValueError if either vector has zero norm.
+    pub fn sin_angle(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        let norm_a = self.norm();
+        let norm_b = other.norm();
+
+        if norm_a == 0.0 || norm_b == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot compute angle for zero vector",
+            ));
+        }
+
+        let wedge = self.outer_product(other)?;
+        let wedge_norm = wedge.norm();
+
+        Ok((wedge_norm / (norm_a * norm_b)).clamp(0.0, 1.0))
+    }
+
+    // =========================================================================
     // REFLECTION AND PROJECTION
     // =========================================================================
 
