@@ -18,6 +18,17 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Scalar product (`scalar_product()`)
 - Commutator (`commutator()`, `x()`)
 - Anticommutator (`anticommutator()`)
+- `fat_dot(other)` — Hestenes inner product (grade-lowering)
+- `symmetric_product(other)` — symmetrized geometric product (a*b + b*a)/2
+- `commutes_with(other)` — check if elements commute under geometric product
+- `anticommutes_with(other)` — check if elements anticommute
+- `hat()` — alias for grade_involution
+- `dagger()` — alias for reverse
+- `bar()` — alias for clifford_conjugate
+- `is_spinor()` — check if unit even versor (rotor)
+- `square()` — geometric square A*A
+- `exponential()` — alias for exp (bivector → rotor)
+- `logarithm()` — alias for log (rotor → bivector)
 - Regressive product / meet (`regressive()`, `meet()`, `vee()`)
 - Grade projection (`grade(k)`)
 - Scalar extraction (`scalar()`)
@@ -239,7 +250,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (771 tests)
+- Python test suite (795 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

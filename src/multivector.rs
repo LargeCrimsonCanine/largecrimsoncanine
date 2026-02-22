@@ -5273,6 +5273,273 @@ impl Multivector {
         }
         Ok(self.scale(1.0 / dom))
     }
+
+    /// Compute the fat dot product (Hestenes inner product).
+    ///
+    /// The fat dot product is defined as: a • b = ⟨a b⟩_{|grade(b) - grade(a)|}
+    /// For blades, this extracts the grade-lowering part of the geometric product.
+    ///
+    /// For vectors, this equals the scalar product (dot product).
+    /// For a vector and bivector, this gives a vector.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to contract with
+    ///
+    /// # Returns
+    /// The fat dot product
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// e12 = Multivector.e12(3)
+    /// result = e1.fat_dot(e12)  # Returns e2
+    /// ```
+    ///
+    /// Reference: Hestenes, Dorst et al. ch.4 [VERIFY]
+    pub fn fat_dot(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        // For blades of grades r and s:
+        // a • b = ⟨a b⟩_{|s-r|} if r,s > 0
+        //       = 0 if r = 0 or s = 0
+        let gp = self.geometric_product(other)?;
+
+        // Get the grades of self and other
+        let self_grade = self.pure_grade();
+        let other_grade = other.pure_grade();
+
+        match (self_grade, other_grade) {
+            (Some(r), Some(s)) if r > 0 && s > 0 => {
+                let target_grade = if r > s { r - s } else { s - r };
+                gp.grade(target_grade)
+            }
+            (Some(0), _) | (_, Some(0)) => {
+                // Scalar involved, fat dot is zero
+                Self::zero(self.dims)
+            }
+            _ => {
+                // Mixed grades: compute grade-by-grade
+                // For now, use left contraction as a reasonable approximation
+                self.left_contraction(other)
+            }
+        }
+    }
+
+    /// Compute the symmetric product (a*b + b*a) / 2.
+    ///
+    /// This is the symmetrization of the geometric product.
+    /// For vectors, this equals the scalar (inner) product.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to multiply with
+    ///
+    /// # Returns
+    /// The symmetric product
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// e2 = Multivector.e2(3)
+    /// sym = e1.symmetric_product(e2)  # Returns 0 (orthogonal vectors)
+    /// ```
+    pub fn symmetric_product(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let ab = self.geometric_product(other)?;
+        let ba = other.geometric_product(self)?;
+        let sum = ab.__add__(&ba)?;
+        Ok(sum.scale(0.5))
+    }
+
+    /// Check if this multivector commutes with another under geometric product.
+    ///
+    /// Two elements commute if a*b = b*a, or equivalently if [a,b] = 0.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to check commutativity with
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the elements commute
+    ///
+    /// # Example
+    /// ```python
+    /// s = Multivector.from_scalar(2.0, 3)
+    /// v = Multivector.from_vector([1, 2, 3])
+    /// assert s.commutes_with(v)  # Scalars commute with everything
+    /// ```
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn commutes_with(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let comm = self.commutator(other)?;
+        Ok(comm.norm() < tol)
+    }
+
+    /// Check if this multivector anticommutes with another.
+    ///
+    /// Two elements anticommute if a*b = -b*a, or equivalently if {a,b} = 0.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to check anticommutativity with
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the elements anticommute
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// e2 = Multivector.e2(3)
+    /// assert e1.anticommutes_with(e2)  # Orthogonal vectors anticommute
+    /// ```
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn anticommutes_with(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let anticomm = self.anticommutator(other)?;
+        Ok(anticomm.norm() < tol)
+    }
+
+    /// Compute the grade involution applied to this multivector.
+    ///
+    /// Grade involution negates odd grades: â = Σ (-1)^k ⟨A⟩_k
+    ///
+    /// This is an alias for grade_involution() for convenience.
+    ///
+    /// # Returns
+    /// The grade involute of the multivector
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 2, 3])
+    /// assert v.hat().approx_eq(v.__neg__())  # Vectors are negated
+    /// ```
+    pub fn hat(&self) -> Self {
+        self.grade_involution()
+    }
+
+    /// Compute the reverse applied to this multivector.
+    ///
+    /// The reverse reverses the order of basis vector products.
+    ///
+    /// This is an alias for reverse() for convenience.
+    ///
+    /// # Returns
+    /// The reverse of the multivector
+    ///
+    /// # Example
+    /// ```python
+    /// e12 = Multivector.e12(3)
+    /// assert e12.dagger().approx_eq(e12.__neg__())  # Bivector reverses to negative
+    /// ```
+    pub fn dagger(&self) -> Self {
+        self.reverse()
+    }
+
+    /// Compute the Clifford conjugate applied to this multivector.
+    ///
+    /// Clifford conjugation is the composition of reverse and grade involution.
+    ///
+    /// This is an alias for clifford_conjugate() for convenience.
+    ///
+    /// # Returns
+    /// The Clifford conjugate
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 2, 3])
+    /// assert v.bar().approx_eq(v.__neg__())  # Vector conjugate is negative
+    /// ```
+    pub fn bar(&self) -> Self {
+        self.clifford_conjugate()
+    }
+
+    /// Check if this multivector is a spinor (even versor).
+    ///
+    /// A spinor contains only even-grade components and has unit norm.
+    /// Rotors are spinors.
+    ///
+    /// # Arguments
+    /// * `tol` - Tolerance for unit norm check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the multivector is a spinor
+    ///
+    /// # Example
+    /// ```python
+    /// R = Multivector.from_axis_angle(e3, pi/4)
+    /// assert R.is_spinor()  # Rotors are spinors
+    ///
+    /// v = Multivector.from_vector([1, 0, 0])
+    /// assert not v.is_spinor()  # Vectors are not spinors
+    /// ```
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_spinor(&self, tol: f64) -> bool {
+        // Check unit norm
+        if (self.norm() - 1.0).abs() > tol {
+            return false;
+        }
+        // Check even grades only
+        self.is_even(tol)
+    }
+
+    /// Square this multivector under geometric product.
+    ///
+    /// Computes A * A. For blades, this is always a scalar.
+    ///
+    /// # Returns
+    /// The geometric square A²
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// assert e1.square().scalar() == 1.0  # Unit vector squares to 1
+    /// ```
+    pub fn square(&self) -> PyResult<Self> {
+        self.geometric_product(self)
+    }
+
+    /// Compute the exponential of a bivector to get a rotor.
+    ///
+    /// For a bivector B, exp(B) produces a rotor that rotates by angle 2|B|
+    /// in the plane of B.
+    ///
+    /// This is an alias for exp() for clarity when working with bivectors.
+    ///
+    /// # Returns
+    /// The exponential (a rotor for bivector input)
+    pub fn exponential(&self) -> PyResult<Self> {
+        self.exp()
+    }
+
+    /// Compute the natural logarithm of a rotor to get a bivector.
+    ///
+    /// For a rotor R, log(R) produces a bivector representing the rotation.
+    ///
+    /// This is an alias for log() for clarity.
+    ///
+    /// # Returns
+    /// The logarithm (a bivector for rotor input)
+    pub fn logarithm(&self) -> PyResult<Self> {
+        self.log()
+    }
 }
 
 // Rust-only methods (not exposed to Python)
