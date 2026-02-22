@@ -4118,3 +4118,131 @@ def test_from_axis_angle_requires_vector():
     with pytest.raises(ValueError, match="must be a vector"):
         lcc.Multivector.from_axis_angle(B, 1.0)
 
+
+# =============================================================================
+# IS_UNIT TESTS
+# =============================================================================
+
+def test_is_unit_true():
+    """Unit vector has norm 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    assert v.is_unit() is True
+
+
+def test_is_unit_normalized():
+    """Normalized vector is unit."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    assert v.is_unit() is False
+    assert v.normalized().is_unit() is True
+
+
+def test_is_unit_rotor():
+    """Rotors are unit."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.is_unit() is True
+
+
+def test_is_unit_scalar():
+    """Scalar 1 is unit, others are not."""
+    import largecrimsoncanine as lcc
+
+    s1 = lcc.Multivector.from_scalar(1.0, dims=2)
+    s2 = lcc.Multivector.from_scalar(2.0, dims=2)
+
+    assert s1.is_unit() is True
+    assert s2.is_unit() is False
+
+
+# =============================================================================
+# DOT PRODUCT TESTS
+# =============================================================================
+
+def test_dot_alias():
+    """dot() is alias for scalar_product()."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+
+    dot_result = a.dot(b)
+    sp_result = a.scalar_product(b)
+
+    assert dot_result.approx_eq(sp_result, 1e-10)
+
+
+def test_dot_vectors():
+    """Dot product of vectors gives scalar."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    result = a.dot(b)
+    assert result.is_scalar()
+    assert result.scalar() == 1.0
+
+
+# =============================================================================
+# LERP TESTS
+# =============================================================================
+
+def test_lerp_endpoints():
+    """lerp at t=0 and t=1 returns endpoints."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    at_0 = a.lerp(b, 0.0)
+    at_1 = a.lerp(b, 1.0)
+
+    assert at_0.approx_eq(a, 1e-10)
+    assert at_1.approx_eq(b, 1e-10)
+
+
+def test_lerp_midpoint():
+    """lerp at t=0.5 returns midpoint."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 2.0, 0.0])
+
+    mid = a.lerp(b, 0.5)
+
+    expected = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+    assert mid.approx_eq(expected, 1e-10)
+
+
+def test_lerp_quarter():
+    """lerp at t=0.25."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_scalar(0.0, dims=2)
+    b = lcc.Multivector.from_scalar(4.0, dims=2)
+
+    result = a.lerp(b, 0.25)
+
+    expected = lcc.Multivector.from_scalar(1.0, dims=2)
+    assert result.approx_eq(expected, 1e-10)
+
+
+def test_lerp_dimension_mismatch():
+    """lerp raises error for dimension mismatch."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    a = lcc.Multivector.zero(2)
+    b = lcc.Multivector.zero(3)
+
+    with pytest.raises(ValueError, match="dimension mismatch"):
+        a.lerp(b, 0.5)
+
