@@ -1154,6 +1154,37 @@ impl Multivector {
         }
     }
 
+    /// Check if this multivector contains only even-grade components.
+    ///
+    /// Returns true if only grades 0, 2, 4, ... are non-zero.
+    /// Scalars, bivectors, and rotors are typically even.
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_even(&self, tol: f64) -> bool {
+        self.coeffs
+            .iter()
+            .enumerate()
+            .all(|(i, &c)| algebra::blade_grade(i).is_multiple_of(2) || c.abs() <= tol)
+    }
+
+    /// Check if this multivector contains only odd-grade components.
+    ///
+    /// Returns true if only grades 1, 3, 5, ... are non-zero.
+    /// Vectors and trivectors are typically odd.
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_odd(&self, tol: f64) -> bool {
+        self.coeffs
+            .iter()
+            .enumerate()
+            .all(|(i, &c)| !algebra::blade_grade(i).is_multiple_of(2) || c.abs() <= tol)
+    }
+
+    /// Return the number of distinct grades present.
+    ///
+    /// Zero multivector returns 0. A pure k-vector returns 1.
+    pub fn grade_count(&self) -> usize {
+        self.grades().len()
+    }
+
     /// Compute the squared norm of this multivector.
     ///
     /// For a multivector A: |A|² = ⟨A ~A⟩₀ (scalar part of A times its reverse).
@@ -1194,6 +1225,18 @@ impl Multivector {
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn norm(&self) -> f64 {
         self.norm_squared().abs().sqrt()
+    }
+
+    /// Alias for norm (magnitude notation).
+    pub fn magnitude(&self) -> f64 {
+        self.norm()
+    }
+
+    /// Compute the geometric product of this multivector with itself.
+    ///
+    /// Returns A * A. For vectors, this equals the squared norm.
+    pub fn squared(&self) -> PyResult<Self> {
+        self.geometric_product(self)
     }
 
     /// Return a normalized copy of this multivector (unit norm).
