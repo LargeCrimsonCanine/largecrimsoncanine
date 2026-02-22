@@ -9359,3 +9359,266 @@ def test_normalize_dominant_zero_error():
 
     with pytest.raises(ValueError):
         zero.normalize_dominant()
+
+
+# ============================================================================
+# CONTRACTION AND PRODUCT UTILITIES TESTS
+# ============================================================================
+
+
+def test_fat_dot_vectors():
+    """fat_dot of orthogonal vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    result = e1.fat_dot(e2)
+
+    assert result.almost_zero()
+
+
+def test_fat_dot_same_vector():
+    """fat_dot of vector with itself is scalar."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+
+    result = e1.fat_dot(e1)
+
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_fat_dot_vector_bivector():
+    """fat_dot of vector and bivector gives vector."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e12 = lcc.Multivector.e12(3)
+
+    result = e1.fat_dot(e12)
+
+    # e1 • e12 = e1 | e12 = e2
+    e2 = lcc.Multivector.e2(3)
+    assert result.approx_eq(e2)
+
+
+def test_symmetric_product_orthogonal_vectors():
+    """symmetric_product of orthogonal vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    result = e1.symmetric_product(e2)
+
+    assert result.almost_zero()
+
+
+def test_symmetric_product_same_vector():
+    """symmetric_product of vector with itself is scalar."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+
+    result = e1.symmetric_product(e1)
+
+    # e1 * e1 = 1, so symmetric product = 1
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_symmetric_product_is_symmetric():
+    """symmetric_product is symmetric: sym(a,b) = sym(b,a)."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 0.0])
+    b = lcc.Multivector.from_vector([3.0, 0.0, 4.0])
+
+    ab = a.symmetric_product(b)
+    ba = b.symmetric_product(a)
+
+    assert ab.approx_eq(ba)
+
+
+def test_commutes_with_scalar():
+    """Scalars commute with everything."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(2.0, 3)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert s.commutes_with(v)
+
+
+def test_commutes_with_same():
+    """Elements commute with themselves."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.commutes_with(v)
+
+
+def test_commutes_with_parallel_vectors():
+    """Parallel vectors commute."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+
+    assert v1.commutes_with(v2)
+
+
+def test_anticommutes_with_orthogonal_vectors():
+    """Orthogonal vectors anticommute."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    assert e1.anticommutes_with(e2)
+
+
+def test_anticommutes_with_parallel_vectors():
+    """Parallel vectors do NOT anticommute."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+
+    assert not v1.anticommutes_with(v2)
+
+
+def test_hat_vector():
+    """hat (grade involution) negates vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    hatted = v.hat()
+
+    assert hatted.approx_eq(v.__neg__())
+
+
+def test_hat_bivector():
+    """hat (grade involution) preserves bivectors."""
+    import largecrimsoncanine as lcc
+
+    b = lcc.Multivector.e12(3)
+    hatted = b.hat()
+
+    assert hatted.approx_eq(b)
+
+
+def test_dagger_vector():
+    """dagger (reverse) preserves vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    daggered = v.dagger()
+
+    assert daggered.approx_eq(v)
+
+
+def test_dagger_bivector():
+    """dagger (reverse) negates bivectors."""
+    import largecrimsoncanine as lcc
+
+    b = lcc.Multivector.e12(3)
+    daggered = b.dagger()
+
+    assert daggered.approx_eq(b.__neg__())
+
+
+def test_bar_vector():
+    """bar (Clifford conjugate) negates vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    barred = v.bar()
+
+    assert barred.approx_eq(v.__neg__())
+
+
+def test_is_spinor_rotor():
+    """is_spinor returns True for rotors."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 4)
+
+    assert R.is_spinor()
+
+
+def test_is_spinor_vector():
+    """is_spinor returns False for vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    assert not v.is_spinor()
+
+
+def test_is_spinor_non_unit():
+    """is_spinor returns False for non-unit even multivectors."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(2.0, 3)
+
+    assert not s.is_spinor()
+
+
+def test_square_unit_vector():
+    """square of unit vector is scalar 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    sq = e1.square()
+
+    assert abs(sq.scalar() - 1.0) < 1e-10
+
+
+def test_square_bivector():
+    """square of unit bivector is scalar -1."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    sq = e12.square()
+
+    assert abs(sq.scalar() - (-1.0)) < 1e-10
+
+
+def test_exponential_zero():
+    """exponential of zero is scalar 1."""
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+    exp_zero = zero.exponential()
+
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    assert exp_zero.approx_eq(identity)
+
+
+def test_logarithm_identity():
+    """logarithm of identity rotor is zero."""
+    import largecrimsoncanine as lcc
+
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    log_id = identity.logarithm()
+
+    zero = lcc.Multivector.zero(3)
+    assert log_id.approx_eq(zero)
+
+
+def test_exponential_logarithm_roundtrip():
+    """exponential(logarithm(R)) recovers R for rotors."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+
+    log_R = R.logarithm()
+    exp_log_R = log_R.exponential()
+
+    assert exp_log_R.same_rotation(R)
