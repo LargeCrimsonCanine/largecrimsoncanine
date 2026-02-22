@@ -9077,3 +9077,285 @@ def test_normalize_rotor():
 
     assert abs(normalized.norm() - 1.0) < 1e-10
     assert normalized.same_rotation(R)
+
+
+# ============================================================================
+# TOLERANCE AND COMPARISON UTILITIES TESTS
+# ============================================================================
+
+
+def test_allclose_equal():
+    """allclose returns True for equal multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.allclose(v)
+
+
+def test_allclose_small_diff():
+    """allclose returns True for small differences."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([1.0 + 1e-10, 2.0, 3.0])
+
+    assert a.allclose(b)
+
+
+def test_allclose_large_diff():
+    """allclose returns False for large differences."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([2.0, 2.0, 3.0])
+
+    assert not a.allclose(b)
+
+
+def test_allclose_relative_tolerance():
+    """allclose respects relative tolerance."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([100.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([101.0, 0.0, 0.0])
+
+    # 1% relative tolerance should pass
+    assert a.allclose(b, rtol=0.02)
+    # 0.1% relative tolerance should fail
+    assert not a.allclose(b, rtol=0.001)
+
+
+def test_almost_zero_true():
+    """almost_zero returns True for near-zero multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1e-15, 1e-15, 1e-15])
+
+    assert v.almost_zero()
+
+
+def test_almost_zero_false():
+    """almost_zero returns False for non-zero multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+
+    assert not v.almost_zero()
+
+
+def test_almost_zero_tolerance():
+    """almost_zero respects tolerance parameter."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1e-5, 0.0, 0.0])
+
+    assert v.almost_zero(tol=1e-4)
+    assert not v.almost_zero(tol=1e-6)
+
+
+def test_max_abs_diff_zero():
+    """max_abs_diff is 0 for equal multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    diff = v.max_abs_diff(v)
+
+    assert diff == 0.0
+
+
+def test_max_abs_diff_basic():
+    """max_abs_diff returns maximum coefficient difference."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([1.1, 2.0, 3.5])
+
+    diff = a.max_abs_diff(b)
+
+    assert abs(diff - 0.5) < 1e-10
+
+
+def test_relative_error_zero():
+    """relative_error is 0 for equal multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    error = v.relative_error(v)
+
+    assert error == 0.0
+
+
+def test_relative_error_basic():
+    """relative_error computes correct relative difference."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([1.1, 0.0, 0.0])
+
+    error = a.relative_error(b)
+
+    assert abs(error - 0.1) < 1e-10
+
+
+def test_is_normalized_true():
+    """is_normalized returns True for unit vectors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+
+    assert e1.is_normalized()
+
+
+def test_is_normalized_false():
+    """is_normalized returns False for non-unit vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+
+    assert not v.is_normalized()
+
+
+def test_is_normalized_tolerance():
+    """is_normalized respects tolerance parameter."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0001, 0.0, 0.0])
+
+    assert v.is_normalized(tol=0.001)
+    assert not v.is_normalized(tol=1e-5)
+
+
+def test_snap_to_zero_basic():
+    """snap_to_zero zeros out small coefficients."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 1e-15, 1e-15])
+    snapped = v.snap_to_zero()
+
+    expected = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    assert snapped.approx_eq(expected)
+
+
+def test_snap_to_zero_tolerance():
+    """snap_to_zero respects tolerance parameter."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.001, 0.0])
+
+    snapped_loose = v.snap_to_zero(tol=0.01)
+    snapped_tight = v.snap_to_zero(tol=1e-6)
+
+    # Loose tolerance should zero out 0.001
+    assert snapped_loose.approx_eq(lcc.Multivector.from_vector([1.0, 0.0, 0.0]))
+    # Tight tolerance should keep 0.001
+    assert not snapped_tight.approx_eq(lcc.Multivector.from_vector([1.0, 0.0, 0.0]))
+
+
+def test_coefficient_distance_zero():
+    """coefficient_distance is 0 for equal multivectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    dist = v.coefficient_distance(v)
+
+    assert dist == 0.0
+
+
+def test_coefficient_distance_basic():
+    """coefficient_distance computes Euclidean distance."""
+    import math
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    dist = a.coefficient_distance(b)
+
+    assert abs(dist - math.sqrt(2)) < 1e-10
+
+
+def test_is_simple_blade_vector():
+    """is_simple_blade returns True for vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.is_simple_blade()
+
+
+def test_is_simple_blade_bivector():
+    """is_simple_blade returns True for simple bivectors."""
+    import largecrimsoncanine as lcc
+
+    b = lcc.Multivector.e12(3)
+
+    assert b.is_simple_blade()
+
+
+def test_is_simple_blade_sum_of_bivectors():
+    """is_simple_blade returns False for non-simple bivector sums."""
+    import largecrimsoncanine as lcc
+
+    # Sum of orthogonal bivectors is NOT a simple blade in general
+    b = lcc.Multivector.e12(4).__add__(lcc.Multivector.from_bivector([0, 0, 0, 0, 0, 1], 4))
+
+    assert not b.is_simple_blade()
+
+
+def test_dominant_coefficient_basic():
+    """dominant_coefficient returns largest absolute coefficient."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, -5.0, 2.0])
+
+    dom = v.dominant_coefficient()
+
+    assert dom == -5.0
+
+
+def test_dominant_coefficient_positive():
+    """dominant_coefficient returns positive when largest."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([10.0, -5.0, 2.0])
+
+    dom = v.dominant_coefficient()
+
+    assert dom == 10.0
+
+
+def test_normalize_dominant_basic():
+    """normalize_dominant scales so largest coefficient is 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([4.0, 0.0, 0.0])
+    scaled = v.normalize_dominant()
+
+    expected = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    assert scaled.approx_eq(expected)
+
+
+def test_normalize_dominant_negative():
+    """normalize_dominant handles negative dominant coefficient."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, -5.0, 2.0])
+    scaled = v.normalize_dominant()
+
+    # -5.0 is dominant, so it becomes 1.0 (scaled by 1/-5 = -0.2)
+    assert abs(scaled.dominant_coefficient() - 1.0) < 1e-10
+
+
+def test_normalize_dominant_zero_error():
+    """normalize_dominant raises for zero multivector."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+
+    with pytest.raises(ValueError):
+        zero.normalize_dominant()

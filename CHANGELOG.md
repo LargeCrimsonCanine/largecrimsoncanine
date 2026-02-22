@@ -54,6 +54,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Addition, subtraction, negation (`+`, `-`, unary `-`)
 - Scalar multiplication and division (`*`, `/`)
 - Equality and approximate equality (`==`, `approx_eq()`)
+- `allclose(other, rtol, atol)` — numpy-style tolerance comparison
+- `almost_zero(tol)` — check if all coefficients are near zero
+- `max_abs_diff(other)` — maximum absolute coefficient difference
+- `relative_error(other)` — relative error norm (||a-b|| / ||a||)
+- `is_normalized(tol)` — check if norm is close to 1
+- `snap_to_zero(tol)` — set near-zero coefficients to exactly zero
+- `coefficient_distance(other)` — Euclidean distance in coefficient space
+- `is_simple_blade(tol)` — check if approximately a simple blade
+- `dominant_coefficient()` — get coefficient with largest absolute value
+- `normalize_dominant()` — scale so dominant coefficient equals 1
 
 **Norms and Inverses**
 - `reverse()`, `tilde()` — reverse operation
@@ -229,7 +239,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (745 tests)
+- Python test suite (771 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
