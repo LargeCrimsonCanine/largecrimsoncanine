@@ -7126,3 +7126,114 @@ def test_unit_zero_raises():
 
     with pytest.raises(ValueError, match="zero"):
         v.unit()
+
+
+# =============================================================================
+# INTERPOLATION UTILITIES
+# =============================================================================
+
+
+def test_nlerp_basic():
+    """nlerp returns normalized interpolation."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    mid = v1.nlerp(v2, 0.5)
+
+    # Result should be normalized
+    assert abs(mid.norm() - 1.0) < 1e-10
+
+
+def test_nlerp_at_zero():
+    """nlerp at t=0 returns normalized self."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    result = v1.nlerp(v2, 0.0)
+    expected = v1.normalized()
+
+    assert result.approx_eq(expected)
+
+
+def test_nlerp_at_one():
+    """nlerp at t=1 returns normalized other."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 3.0, 4.0])
+
+    result = v1.nlerp(v2, 1.0)
+    expected = v2.normalized()
+
+    assert result.approx_eq(expected)
+
+
+def test_nlerp_preserves_norm():
+    """nlerp always produces unit vector from unit vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    for t in [0.0, 0.1, 0.25, 0.5, 0.75, 0.9, 1.0]:
+        result = v1.nlerp(v2, t)
+        assert abs(result.norm() - 1.0) < 1e-10
+
+
+def test_nlerp_midpoint_direction():
+    """nlerp midpoint is in expected direction."""
+    import math
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    mid = v1.nlerp(v2, 0.5)
+
+    # Midpoint should be along [1, 1, 0] normalized
+    sqrt2 = math.sqrt(2.0) / 2.0
+    expected = lcc.Multivector.from_vector([sqrt2, sqrt2, 0.0])
+
+    assert mid.approx_eq(expected)
+
+
+def test_nlerp_vs_lerp():
+    """nlerp equals lerp followed by normalized."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+
+    nlerped = v1.nlerp(v2, 0.3)
+    lerp_normalized = v1.lerp(v2, 0.3).normalized()
+
+    assert nlerped.approx_eq(lerp_normalized)
+
+
+def test_nlerp_dimension_mismatch():
+    """nlerp raises error on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])  # 2D
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])  # 3D
+
+    with pytest.raises(ValueError, match="dimension mismatch"):
+        v1.nlerp(v2, 0.5)
+
+
+def test_nlerp_opposite_vectors():
+    """nlerp between opposite vectors at t=0.5 may fail or give arbitrary result."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([-1.0, 0.0, 0.0])
+
+    # At t=0.5, lerp gives zero vector, normalization should fail
+    with pytest.raises(ValueError, match="zero"):
+        v1.nlerp(v2, 0.5)
