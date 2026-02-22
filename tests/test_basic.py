@@ -6205,3 +6205,154 @@ def test_format_invalid_spec():
     mv = lcc.Multivector.from_vector([1.0, 2.0])
     with pytest.raises(ValueError):
         format(mv, "invalid")
+
+
+# =====================
+# Unit vector constructor tests
+# =====================
+
+
+def test_e1_basic():
+    """e1() returns unit vector in first direction."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    assert e1.is_vector()
+    assert abs(e1.norm() - 1.0) < 1e-10
+    assert e1.to_list()[1] == 1.0  # e1 coefficient
+
+
+def test_e2_basic():
+    """e2() returns unit vector in second direction."""
+    import largecrimsoncanine as lcc
+
+    e2 = lcc.Multivector.e2(3)
+    assert e2.is_vector()
+    assert abs(e2.norm() - 1.0) < 1e-10
+    assert e2.to_list()[2] == 1.0  # e2 coefficient
+
+
+def test_e3_basic():
+    """e3() returns unit vector in third direction."""
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    assert e3.is_vector()
+    assert abs(e3.norm() - 1.0) < 1e-10
+    assert e3.to_list()[4] == 1.0  # e3 coefficient (index 4 = 2^2)
+
+
+def test_e2_requires_dims_2():
+    """e2() requires dimension >= 2."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="dimension >= 2"):
+        lcc.Multivector.e2(1)
+
+
+def test_e3_requires_dims_3():
+    """e3() requires dimension >= 3."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="dimension >= 3"):
+        lcc.Multivector.e3(2)
+
+
+def test_e1_e2_orthogonal():
+    """e1 and e2 are orthogonal."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    assert e1.is_orthogonal(e2)
+
+
+def test_e1_e2_e3_orthogonal():
+    """e1, e2, e3 are mutually orthogonal."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+    assert e1.is_orthogonal(e2)
+    assert e2.is_orthogonal(e3)
+    assert e1.is_orthogonal(e3)
+
+
+def test_random_returns_multivector():
+    """random() returns a multivector with the correct dimension."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.random(3)
+    assert mv.dims == 3
+    assert len(mv.to_list()) == 8
+
+
+def test_random_different_each_time():
+    """random() returns different values each time."""
+    import largecrimsoncanine as lcc
+    import time
+
+    mv1 = lcc.Multivector.random(3)
+    time.sleep(0.001)  # Small delay to ensure different seed
+    mv2 = lcc.Multivector.random(3)
+    # Very unlikely to be equal
+    assert mv1.to_list() != mv2.to_list()
+
+
+def test_random_vector_is_unit():
+    """random_vector() returns a unit vector."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.random_vector(3)
+    assert v.is_vector()
+    assert abs(v.norm() - 1.0) < 1e-10
+
+
+def test_random_vector_different_each_time():
+    """random_vector() returns different vectors each time."""
+    import largecrimsoncanine as lcc
+    import time
+
+    v1 = lcc.Multivector.random_vector(3)
+    time.sleep(0.001)
+    v2 = lcc.Multivector.random_vector(3)
+    # Very unlikely to be parallel
+    assert not v1.is_parallel(v2) or v1.to_list() != v2.to_list()
+
+
+def test_random_rotor_is_rotor():
+    """random_rotor() returns a valid rotor."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.random_rotor(3)
+    assert R.is_rotor()
+
+
+def test_random_rotor_is_unit():
+    """random_rotor() returns a unit rotor."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.random_rotor(3)
+    assert abs(R.norm() - 1.0) < 1e-10
+
+
+def test_random_rotor_preserves_vector_norm():
+    """Applying random rotor preserves vector norm."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.random_rotor(3)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    rotated = R.sandwich(v)
+    assert abs(rotated.norm() - v.norm()) < 1e-10
+
+
+def test_random_rotor_requires_dims_2():
+    """random_rotor() requires dimension >= 2."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="dimension >= 2"):
+        lcc.Multivector.random_rotor(1)
