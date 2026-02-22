@@ -8066,3 +8066,230 @@ def test_project_onto_plane_perpendicular():
 
     zero = lcc.Multivector.from_vector([0.0, 0.0, 0.0])
     assert proj.approx_eq(zero)
+
+
+# ============================================================================
+# REFLECTION UTILITIES TESTS
+# ============================================================================
+
+
+def test_reflect_in_plane_basic():
+    """reflect_in_plane reverses component perpendicular to plane."""
+    import largecrimsoncanine as lcc
+
+    # Vector with z-component
+    v = lcc.Multivector.from_vector([1.0, 0.0, 1.0])
+    # xy-plane as bivector
+    e12 = lcc.Multivector.e12(3)
+
+    reflected = v.reflect_in_plane(e12)
+
+    # z-component should flip, xy should stay
+    expected = lcc.Multivector.from_vector([1.0, 0.0, -1.0])
+    assert reflected.approx_eq(expected)
+
+
+def test_reflect_in_plane_in_plane_unchanged():
+    """reflect_in_plane leaves vectors in the plane unchanged."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e12 = lcc.Multivector.e12(3)
+
+    reflected = v.reflect_in_plane(e12)
+
+    # Vector in xy-plane should be unchanged by reflection through xy-plane
+    assert reflected.approx_eq(v)
+
+
+def test_reflect_in_plane_perpendicular_flips():
+    """reflect_in_plane flips vectors perpendicular to the plane."""
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    e12 = lcc.Multivector.e12(3)
+
+    reflected = e3.reflect_in_plane(e12)
+
+    expected = e3.__neg__()
+    assert reflected.approx_eq(expected)
+
+
+def test_reflect_in_plane_dimension_mismatch():
+    """reflect_in_plane raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    e12_4d = lcc.Multivector.e12(4)
+
+    with pytest.raises(ValueError):
+        v.reflect_in_plane(e12_4d)
+
+
+def test_double_reflection_is_rotation():
+    """double_reflection with perpendicular normals gives 180° rotation."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    # Two perpendicular reflections = 180° rotation
+    result = v.double_reflection(e1, e2)
+
+    # v along e1, double reflection should give -v
+    expected = v.__neg__()
+    assert result.approx_eq(expected)
+
+
+def test_double_reflection_same_normal_identity():
+    """double_reflection with same normal is identity."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    n = lcc.Multivector.e1(3)
+
+    result = v.double_reflection(n, n)
+
+    # Two reflections across same plane = identity
+    assert result.approx_eq(v)
+
+
+def test_double_reflection_preserves_norm():
+    """double_reflection preserves magnitude."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    n1 = lcc.Multivector.e1(3)
+    n2 = lcc.Multivector.from_vector([1.0, 1.0, 0.0]).normalized()
+
+    result = v.double_reflection(n1, n2)
+
+    assert abs(result.norm() - v.norm()) < 1e-10
+
+
+def test_double_reflection_dimension_mismatch():
+    """double_reflection raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    n1 = lcc.Multivector.e1(3)
+    n2 = lcc.Multivector.e1(4)
+
+    with pytest.raises(ValueError):
+        v.double_reflection(n1, n2)
+
+
+def test_is_reflection_unit_vector():
+    """is_reflection returns True for unit vectors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+
+    assert e1.is_reflection()
+    assert e2.is_reflection()
+    assert e3.is_reflection()
+
+
+def test_is_reflection_non_unit_vector():
+    """is_reflection returns False for non-unit vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+
+    assert not v.is_reflection()
+
+
+def test_is_reflection_rotor():
+    """is_reflection returns False for rotors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    rotor = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert not rotor.is_reflection()
+
+
+def test_is_reflection_scalar():
+    """is_reflection returns False for scalars."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(1.0, 3)
+
+    assert not s.is_reflection()
+
+
+def test_rotor_from_reflections_perpendicular():
+    """rotor_from_reflections with perpendicular vectors gives 180° rotor."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    R = lcc.Multivector.rotor_from_reflections(e1, e2)
+
+    # Should be a pure bivector (no scalar part for 90° angle between vectors)
+    # Rotation angle should be 2 * 90° = 180°
+    angle = R.rotation_angle()
+    assert abs(angle - math.pi) < 1e-10
+
+
+def test_rotor_from_reflections_same_vector():
+    """rotor_from_reflections with same vector gives identity rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+
+    R = lcc.Multivector.rotor_from_reflections(e1, e1)
+
+    # Same vector -> scalar 1 (identity)
+    expected = lcc.Multivector.from_scalar(1.0, 3)
+    assert R.approx_eq(expected)
+
+
+def test_rotor_from_reflections_is_unit():
+    """rotor_from_reflections produces unit rotor."""
+    import largecrimsoncanine as lcc
+
+    n1 = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+    n2 = lcc.Multivector.from_vector([0.0, 1.0, 1.0])
+
+    R = lcc.Multivector.rotor_from_reflections(n1, n2)
+
+    assert R.is_rotor()
+
+
+def test_rotor_from_reflections_dimension_mismatch():
+    """rotor_from_reflections raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    n1 = lcc.Multivector.e1(3)
+    n2 = lcc.Multivector.e1(4)
+
+    with pytest.raises(ValueError):
+        lcc.Multivector.rotor_from_reflections(n1, n2)
+
+
+def test_double_reflection_equals_rotor():
+    """double_reflection produces same result as rotor sandwich."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    n1 = lcc.Multivector.e1(3)
+    n2 = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+
+    # Double reflection
+    double_ref = v.double_reflection(n1, n2)
+
+    # Rotor sandwich
+    R = lcc.Multivector.rotor_from_reflections(n1, n2)
+    rotor_result = R.sandwich(v)
+
+    assert double_ref.approx_eq(rotor_result)

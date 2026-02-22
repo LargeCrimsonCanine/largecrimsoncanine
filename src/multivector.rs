@@ -4238,6 +4238,154 @@ impl Multivector {
         let scaled = log_r.scale(t);
         scaled.exp()
     }
+
+    /// Reflect this multivector through a plane defined by a bivector.
+    ///
+    /// The plane is specified by a bivector B representing the plane's orientation.
+    /// For a plane with normal n, the bivector B = I·n (dual of normal) defines
+    /// the reflection plane.
+    ///
+    /// Formula: x' = B * x * B⁻¹ (for bivector B with norm² = -1)
+    ///
+    /// # Arguments
+    /// * `plane` - A bivector (grade-2 element) defining the reflection plane
+    ///
+    /// # Returns
+    /// The reflected multivector
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 1, 0])
+    /// xy_plane = Multivector.e12(3)  # The xy-plane
+    /// reflected = v.reflect_in_plane(xy_plane)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn reflect_in_plane(&self, plane: &Multivector) -> PyResult<Self> {
+        if self.dims != plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: operand is Cl({}) but plane is Cl({}); \
+                both must have the same dimension",
+                self.dims, plane.dims
+            )));
+        }
+        // Reflection through a plane defined by bivector B:
+        // For a unit bivector B, the formula is: x' = B * x * B (since B^{-1} = -B and we need extra sign)
+        // Vectors in the plane are unchanged, perpendicular vectors are negated
+        let plane_norm = plane.norm();
+        if plane_norm == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot reflect in zero plane",
+            ));
+        }
+        let unit_plane = plane.scale(1.0 / plane_norm);
+        let bx = unit_plane.geometric_product(self)?;
+        bx.geometric_product(&unit_plane)
+    }
+
+    /// Apply two successive reflections across hyperplanes perpendicular to n1 and n2.
+    ///
+    /// Two reflections produce a rotation in the plane spanned by n1 and n2,
+    /// with angle equal to twice the angle between n1 and n2.
+    ///
+    /// This is mathematically equivalent to applying the rotor R = n2 * n1 to self.
+    ///
+    /// # Arguments
+    /// * `n1` - First reflection normal (vector)
+    /// * `n2` - Second reflection normal (vector)
+    ///
+    /// # Returns
+    /// The doubly-reflected multivector (equivalent to a rotation)
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 0, 0])
+    /// n1 = Multivector.e1(3)  # First reflection across yz-plane
+    /// n2 = Multivector.e2(3)  # Second reflection across xz-plane
+    /// # Result is a 180° rotation in the xy-plane
+    /// result = v.double_reflection(n1, n2)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn double_reflection(&self, n1: &Multivector, n2: &Multivector) -> PyResult<Self> {
+        if self.dims != n1.dims || self.dims != n2.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: operand is Cl({}) but normals are Cl({}) and Cl({}); \
+                all must have the same dimension",
+                self.dims, n1.dims, n2.dims
+            )));
+        }
+        // Two reflections: first by n1, then by n2
+        let first_reflection = self.reflect(n1)?;
+        first_reflection.reflect(n2)
+    }
+
+    /// Check if this multivector represents a reflection (unit versor of odd grade).
+    ///
+    /// A reflection versor is a product of an odd number of unit vectors,
+    /// where the simplest case is a single unit vector.
+    ///
+    /// # Returns
+    /// True if this is a unit versor with odd grade structure
+    ///
+    /// # Example
+    /// ```python
+    /// n = Multivector.e1(3)  # Unit vector is a reflection
+    /// assert n.is_reflection()
+    ///
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # Rotor is NOT a reflection
+    /// assert not R.is_reflection()
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn is_reflection(&self) -> bool {
+        // A reflection versor has unit norm and is an odd versor
+        let norm = self.norm();
+        if (norm - 1.0).abs() > 1e-10 {
+            return false;
+        }
+        // Check if it's odd: should be a product of odd number of vectors
+        // An odd versor has non-zero odd-grade components and zero even-grade components
+        self.is_odd(1e-10)
+    }
+
+    /// Create a rotor from two reflection vectors.
+    ///
+    /// The product of two unit vectors n2 * n1 creates a rotor that performs
+    /// the same transformation as two successive reflections.
+    /// The rotation angle is twice the angle between n1 and n2.
+    ///
+    /// # Arguments
+    /// * `n1` - First reflection normal (vector)
+    /// * `n2` - Second reflection normal (vector)
+    ///
+    /// # Returns
+    /// A rotor R = n2 * n1
+    ///
+    /// # Example
+    /// ```python
+    /// n1 = Multivector.e1(3)
+    /// n2 = Multivector.e2(3)
+    /// R = Multivector.rotor_from_reflections(n1, n2)
+    /// # R represents a 180° rotation in the xy-plane
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[staticmethod]
+    pub fn rotor_from_reflections(n1: &Multivector, n2: &Multivector) -> PyResult<Self> {
+        if n1.dims != n2.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: n1 is Cl({}) but n2 is Cl({}); \
+                both must have the same dimension",
+                n1.dims, n2.dims
+            )));
+        }
+        // Rotor from two reflections: R = n2 * n1
+        // Normalize both vectors first
+        let n1_unit = n1.normalized()?;
+        let n2_unit = n2.normalized()?;
+        n2_unit.geometric_product(&n1_unit)
+    }
 }
 
 // Rust-only methods (not exposed to Python)

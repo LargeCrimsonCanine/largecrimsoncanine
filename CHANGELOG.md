@@ -89,6 +89,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 **Geometric Operations**
 - `reflect(n)` — reflection across hyperplane perpendicular to n
+- `reflect_in_plane(plane)` — reflection through a plane (bivector)
+- `double_reflection(n1, n2)` — two successive reflections (produces rotation)
+- `is_reflection()` — check if this is a reflection versor (unit odd versor)
+- `Multivector.rotor_from_reflections(n1, n2)` — create rotor from two reflection vectors
 - `project(B)` — projection onto blade B
 - `reject(B)` — rejection from blade B
 - `parallel_component(v)` — component parallel to vector (alias for project)
@@ -201,7 +205,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (665 tests)
+- Python test suite (682 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
