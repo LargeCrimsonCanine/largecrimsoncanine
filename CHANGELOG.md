@@ -121,8 +121,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `bool()` function (`__bool__`) — non-zero check
 - `+` unary operator (`__pos__`) — returns copy
 - `~` operator (`__invert__`) — returns reverse
+- `iter()` function (`__iter__`) — iterate over coefficients
 - `copy()` — explicit copy method
 - `coefficients()` — return all coefficients as list
+- `set_coefficient(index, value)` — return copy with coefficient changed
 - `dimension` / `dims` — base vector space dimension (property)
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
