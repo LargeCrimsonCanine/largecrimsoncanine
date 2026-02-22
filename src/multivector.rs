@@ -2684,6 +2684,23 @@ impl Multivector {
         self.norm()
     }
 
+    /// Compute the norm of just the grade-k part of this multivector.
+    ///
+    /// Returns the norm of the projection onto grade k.
+    /// Useful for analyzing the contribution of each grade.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+    /// scalar_norm = mv.grade_norm(0)  # norm of scalar part
+    /// vector_norm = mv.grade_norm(1)  # norm of vector part
+    /// bivector_norm = mv.grade_norm(2)  # norm of bivector part
+    /// ```
+    pub fn grade_norm(&self, k: usize) -> PyResult<f64> {
+        let grade_part = self.grade(k)?;
+        Ok(grade_part.norm())
+    }
+
     /// Compute the geometric product of this multivector with itself.
     ///
     /// Returns A * A. For vectors, this equals the squared norm.
@@ -3071,6 +3088,41 @@ impl Multivector {
     /// ```
     pub fn nonzero_count(&self) -> usize {
         self.coeffs.iter().filter(|&&c| c != 0.0).count()
+    }
+
+    /// Compute the sparsity of this multivector.
+    ///
+    /// Returns the fraction of coefficients that are zero, from 0.0 to 1.0.
+    /// A sparsity of 1.0 means all coefficients are zero.
+    /// A sparsity of 0.0 means all coefficients are non-zero.
+    ///
+    /// Useful for debugging and understanding multivector structure.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])  # 3 non-zero of 8 coeffs
+    /// v.sparsity()  # 0.625 (5 zeros out of 8)
+    /// ```
+    pub fn sparsity(&self) -> f64 {
+        if self.coeffs.is_empty() {
+            return 1.0;
+        }
+        let zero_count = self.coeffs.iter().filter(|&&c| c == 0.0).count();
+        zero_count as f64 / self.coeffs.len() as f64
+    }
+
+    /// Compute the density of this multivector.
+    ///
+    /// Returns the fraction of coefficients that are non-zero, from 0.0 to 1.0.
+    /// This is 1.0 - sparsity().
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])  # 3 non-zero of 8 coeffs
+    /// v.density()  # 0.375 (3 non-zeros out of 8)
+    /// ```
+    pub fn density(&self) -> f64 {
+        1.0 - self.sparsity()
     }
 
     /// Mean (average) of all coefficients.
@@ -3466,6 +3518,54 @@ impl Multivector {
         // cos(θ) = a · b / (|a| |b|)
         let cos_theta = (dot / (norm_a * norm_b)).clamp(-1.0, 1.0);
         Ok(cos_theta.acos())
+    }
+
+    /// Compute the signed angle between two vectors given a reference normal.
+    ///
+    /// Returns the angle in radians from self to other, with sign determined
+    /// by the normal vector. Positive if the rotation from self to other
+    /// follows the right-hand rule around the normal.
+    ///
+    /// This is useful for:
+    /// - Measuring rotation direction in a plane
+    /// - Computing winding angles
+    /// - Determining clockwise vs counterclockwise
+    ///
+    /// All three vectors must be in the same dimension space.
+    /// Only works in 3D (requires cross product for sign determination).
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// e3 = Multivector.from_vector([0.0, 0.0, 1.0])
+    /// angle = e1.signed_angle(e2, e3)  # +π/2
+    /// angle = e2.signed_angle(e1, e3)  # -π/2
+    /// ```
+    ///
+    /// Reference: Standard signed angle computation
+    pub fn signed_angle(&self, other: &Multivector, normal: &Multivector) -> PyResult<f64> {
+        if self.dims != 3 || other.dims != 3 || normal.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "signed_angle requires all vectors to be in 3D",
+            ));
+        }
+
+        // Get unsigned angle
+        let unsigned = self.angle_between(other)?;
+
+        // Compute cross product to determine sign
+        let cross = self.cross(other)?;
+
+        // Sign is determined by whether cross is same direction as normal
+        let dot_mv = cross.scalar_product(normal)?;
+        let dot = dot_mv.scalar();
+
+        if dot >= 0.0 {
+            Ok(unsigned)
+        } else {
+            Ok(-unsigned)
+        }
     }
 
     /// Check if two vectors are parallel (same or opposite direction).
