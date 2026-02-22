@@ -26,6 +26,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 **Constructors**
 - `Multivector.zero(dims)` — zero multivector
 - `Multivector.from_scalar(value, dims)` — scalar multivector
+- `Multivector.from_list(coeffs)` — multivector from coefficient list
 - `Multivector.from_vector(coords)` — vector from coordinates
 - `Multivector.from_bivector(components, dims)` — bivector from components
 - `Multivector.basis(index, dims)` — single basis vector
@@ -93,6 +94,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_even()`, `is_odd()` — check if only even/odd grades
 - `grade_count()` — number of distinct grades
 - `negate_grade(k)` — negate coefficients of grade k
+- `clear_grade(k)` — zero out coefficients of grade k
 - `is_pseudoscalar()` — check if highest grade only
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs
