@@ -367,6 +367,97 @@ impl Multivector {
         Ok((w, x, y, z))
     }
 
+    /// Convert this 3D rotor to a 3x3 rotation matrix.
+    ///
+    /// Returns the matrix as a flat list of 9 elements in row-major order:
+    /// [m00, m01, m02, m10, m11, m12, m20, m21, m22]
+    ///
+    /// The matrix is orthogonal with determinant +1 (proper rotation).
+    ///
+    /// Raises ValueError if not a 3D multivector.
+    pub fn to_rotation_matrix(&self) -> PyResult<Vec<f64>> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "to_rotation_matrix requires 3D multivector, got Cl({})",
+                self.dims
+            )));
+        }
+
+        // Convert to quaternion first, then to rotation matrix
+        let (w, x, y, z) = self.to_quaternion()?;
+
+        // Standard quaternion to rotation matrix formula
+        // Assumes unit quaternion (w² + x² + y² + z² = 1)
+        let xx = x * x;
+        let yy = y * y;
+        let zz = z * z;
+        let xy = x * y;
+        let xz = x * z;
+        let yz = y * z;
+        let wx = w * x;
+        let wy = w * y;
+        let wz = w * z;
+
+        Ok(vec![
+            1.0 - 2.0 * (yy + zz), // m00
+            2.0 * (xy - wz),       // m01
+            2.0 * (xz + wy),       // m02
+            2.0 * (xy + wz),       // m10
+            1.0 - 2.0 * (xx + zz), // m11
+            2.0 * (yz - wx),       // m12
+            2.0 * (xz - wy),       // m20
+            2.0 * (yz + wx),       // m21
+            1.0 - 2.0 * (xx + yy), // m22
+        ])
+    }
+
+    /// Create a 3D rotor from a 3x3 rotation matrix.
+    ///
+    /// The matrix should be provided as a flat list of 9 elements in row-major order:
+    /// [m00, m01, m02, m10, m11, m12, m20, m21, m22]
+    ///
+    /// The matrix should be orthogonal with determinant +1. Non-orthogonal
+    /// matrices will produce undefined results.
+    #[staticmethod]
+    pub fn from_rotation_matrix(matrix: Vec<f64>) -> PyResult<Self> {
+        if matrix.len() != 9 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "rotation matrix must have 9 elements, got {}",
+                matrix.len()
+            )));
+        }
+
+        let m00 = matrix[0];
+        let m01 = matrix[1];
+        let m02 = matrix[2];
+        let m10 = matrix[3];
+        let m11 = matrix[4];
+        let m12 = matrix[5];
+        let m20 = matrix[6];
+        let m21 = matrix[7];
+        let m22 = matrix[8];
+
+        // Shepperd's method for extracting quaternion from rotation matrix
+        // More numerically stable than direct formula
+        let trace = m00 + m11 + m22;
+
+        let (w, x, y, z) = if trace > 0.0 {
+            let s = 0.5 / (trace + 1.0).sqrt();
+            (0.25 / s, (m21 - m12) * s, (m02 - m20) * s, (m10 - m01) * s)
+        } else if m00 > m11 && m00 > m22 {
+            let s = 2.0 * (1.0 + m00 - m11 - m22).sqrt();
+            ((m21 - m12) / s, 0.25 * s, (m01 + m10) / s, (m02 + m20) / s)
+        } else if m11 > m22 {
+            let s = 2.0 * (1.0 + m11 - m00 - m22).sqrt();
+            ((m02 - m20) / s, (m01 + m10) / s, 0.25 * s, (m12 + m21) / s)
+        } else {
+            let s = 2.0 * (1.0 + m22 - m00 - m11).sqrt();
+            ((m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s)
+        };
+
+        Ok(Self::from_quaternion(w, x, y, z))
+    }
+
     /// Create a bivector (grade-2) from components.
     ///
     /// For 2D: provide [e12_coeff]

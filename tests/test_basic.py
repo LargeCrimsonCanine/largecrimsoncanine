@@ -4558,3 +4558,161 @@ def test_quaternion_rotation_matches():
 
     assert rotated1.approx_eq(rotated2, 1e-10)
 
+
+# =============================================================================
+# ROTATION MATRIX TESTS
+# =============================================================================
+
+def test_to_rotation_matrix_identity():
+    """Identity rotor gives identity matrix."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+    mat = R.to_rotation_matrix()
+
+    # Identity matrix
+    expected = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    for i, exp in enumerate(expected):
+        assert abs(mat[i] - exp) < 1e-10
+
+
+def test_to_rotation_matrix_90_z():
+    """90-degree rotation around z gives correct matrix."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+    R = lcc.Multivector.from_axis_angle(axis, math.pi / 2)
+    mat = R.to_rotation_matrix()
+
+    # 90° around z: x→y, y→-x, z→z
+    # [ 0 -1  0]
+    # [ 1  0  0]
+    # [ 0  0  1]
+    expected = [0, -1, 0, 1, 0, 0, 0, 0, 1]
+    for i, exp in enumerate(expected):
+        assert abs(mat[i] - exp) < 1e-10
+
+
+def test_to_rotation_matrix_180_x():
+    """180-degree rotation around x."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    R = lcc.Multivector.from_axis_angle(axis, math.pi)
+    mat = R.to_rotation_matrix()
+
+    # 180° around x: x→x, y→-y, z→-z
+    # [ 1  0  0]
+    # [ 0 -1  0]
+    # [ 0  0 -1]
+    expected = [1, 0, 0, 0, -1, 0, 0, 0, -1]
+    for i, exp in enumerate(expected):
+        assert abs(mat[i] - exp) < 1e-10
+
+
+def test_to_rotation_matrix_orthogonal():
+    """Result is orthogonal matrix (M * M^T = I)."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    R = lcc.Multivector.from_axis_angle(axis, 1.234)
+    mat = R.to_rotation_matrix()
+
+    # Check M * M^T = I
+    for i in range(3):
+        for j in range(3):
+            dot = sum(mat[i*3 + k] * mat[j*3 + k] for k in range(3))
+            expected = 1.0 if i == j else 0.0
+            assert abs(dot - expected) < 1e-10
+
+
+def test_to_rotation_matrix_determinant():
+    """Determinant is +1."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    R = lcc.Multivector.from_axis_angle(axis, 1.234)
+    mat = R.to_rotation_matrix()
+
+    # 3x3 determinant
+    det = (mat[0] * (mat[4]*mat[8] - mat[5]*mat[7]) -
+           mat[1] * (mat[3]*mat[8] - mat[5]*mat[6]) +
+           mat[2] * (mat[3]*mat[7] - mat[4]*mat[6]))
+
+    assert abs(det - 1.0) < 1e-10
+
+
+def test_from_rotation_matrix_identity():
+    """Identity matrix gives identity rotor."""
+    import largecrimsoncanine as lcc
+
+    mat = [1, 0, 0, 0, 1, 0, 0, 0, 1]
+    R = lcc.Multivector.from_rotation_matrix(mat)
+
+    assert R.is_rotor()
+    # Identity rotor has scalar ≈ 1, bivector ≈ 0
+    assert abs(R.scalar() - 1.0) < 1e-10 or abs(R.scalar() + 1.0) < 1e-10
+
+
+def test_from_rotation_matrix_90_z():
+    """90-degree z rotation matrix gives correct rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # 90° around z
+    mat = [0, -1, 0, 1, 0, 0, 0, 0, 1]
+    R = lcc.Multivector.from_rotation_matrix(mat)
+
+    # Apply to e1, should get e2
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    expected = [0.0, 1.0, 0.0]
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_rotation_matrix_roundtrip():
+    """to_rotation_matrix and from_rotation_matrix are inverses."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    R = lcc.Multivector.from_axis_angle(axis, 1.5)
+
+    mat = R.to_rotation_matrix()
+    R2 = lcc.Multivector.from_rotation_matrix(mat)
+
+    # Both rotors should produce same rotation
+    # (might differ by sign, which is ok for rotors)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    rotated1 = R.sandwich(v)
+    rotated2 = R2.sandwich(v)
+
+    assert rotated1.approx_eq(rotated2, 1e-10)
+
+
+def test_to_rotation_matrix_requires_3d():
+    """to_rotation_matrix raises error for non-3D."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="requires 3D"):
+        mv.to_rotation_matrix()
+
+
+def test_from_rotation_matrix_wrong_size():
+    """from_rotation_matrix raises error for wrong size."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mat = [1, 0, 0, 0, 1, 0]  # 6 elements instead of 9
+    with pytest.raises(ValueError, match="9 elements"):
+        lcc.Multivector.from_rotation_matrix(mat)
+
