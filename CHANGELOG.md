@@ -99,6 +99,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs
 - `blade_indices()` — list of non-zero blade indices
+- `coefficient(index)` — get coefficient by blade index
 - `distance(other)` — Euclidean distance between two vectors
 - `midpoint(other)` — midpoint between two vectors
 
