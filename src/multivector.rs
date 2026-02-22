@@ -602,6 +602,29 @@ impl Multivector {
         })
     }
 
+    /// Negate the coefficients of a specific grade.
+    ///
+    /// Returns a new multivector with grade k coefficients negated.
+    /// All other grades are unchanged.
+    pub fn negate_grade(&self, k: usize) -> PyResult<Self> {
+        if k > self.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "grade {} exceeds algebra dimension {} (max grade is {})",
+                k, self.dims, self.dims
+            )));
+        }
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| if algebra::blade_grade(i) == k { -c } else { c })
+            .collect();
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+        })
+    }
+
     /// Compute the geometric product of two multivectors.
     ///
     /// The geometric product is the fundamental operation of Clifford algebra.
@@ -1135,6 +1158,19 @@ impl Multivector {
             coeffs,
             dims: self.dims,
         }
+    }
+
+    /// Unary plus (returns self unchanged).
+    pub fn __pos__(&self) -> Self {
+        self.clone()
+    }
+
+    /// Inversion operator (~) returns the reverse.
+    ///
+    /// In GA literature, ~A denotes the reverse of A.
+    /// This flips the order of basis vectors in each blade.
+    pub fn __invert__(&self) -> Self {
+        self.reverse()
     }
 
     /// Multiply all coefficients by a scalar.

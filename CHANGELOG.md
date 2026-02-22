@@ -92,6 +92,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `squared()` — geometric product with self (A * A)
 - `is_even()`, `is_odd()` — check if only even/odd grades
 - `grade_count()` — number of distinct grades
+- `negate_grade(k)` — negate coefficients of grade k
 - `is_pseudoscalar()` — check if highest grade only
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs
@@ -109,13 +110,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `**` operator (`__pow__`) — integer exponentiation with binary algorithm
 - `abs()` function (`__abs__`) — returns norm
 - `bool()` function (`__bool__`) — non-zero check
+- `+` unary operator (`__pos__`) — returns copy
+- `~` operator (`__invert__`) — returns reverse
 - `copy()` — explicit copy method
 - `coefficients()` — return all coefficients as list
 - `dimension` / `dims` — base vector space dimension (property)
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (393 tests)
+- Python test suite (402 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
