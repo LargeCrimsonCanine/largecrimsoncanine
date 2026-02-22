@@ -121,6 +121,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `sum_coefficients()` — sum of all coefficients
 - `max_coefficient()` — maximum coefficient value
 - `min_coefficient()` — minimum coefficient value
+- `mean_coefficient()` — mean (average) of all coefficients
+- `variance_coefficient()` — variance of all coefficients
+- `std_coefficient()` — standard deviation of all coefficients
+- `median_coefficient()` — median of all coefficients
+- `range_coefficient()` — max - min of coefficients
+- `l1_norm()` — sum of absolute values (taxicab norm)
+- `linf_norm()` — maximum absolute value (Chebyshev norm)
 - `nonzero_count()` — count of non-zero coefficients
 - `distance(other)` — Euclidean distance between two vectors
 - `midpoint(other)` — midpoint between two vectors
@@ -172,7 +179,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (558 tests)
+- Python test suite (572 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

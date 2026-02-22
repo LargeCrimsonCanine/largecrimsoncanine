@@ -2894,6 +2894,112 @@ impl Multivector {
         self.coeffs.iter().filter(|&&c| c != 0.0).count()
     }
 
+    /// Mean (average) of all coefficients.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// mv.mean_coefficient()  # 2.5
+    /// ```
+    pub fn mean_coefficient(&self) -> f64 {
+        if self.coeffs.is_empty() {
+            return 0.0;
+        }
+        self.sum_coefficients() / self.coeffs.len() as f64
+    }
+
+    /// Variance of all coefficients.
+    ///
+    /// Uses population variance (divides by n, not n-1).
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// mv.variance_coefficient()  # 1.25
+    /// ```
+    pub fn variance_coefficient(&self) -> f64 {
+        if self.coeffs.is_empty() {
+            return 0.0;
+        }
+        let mean = self.mean_coefficient();
+        let sum_sq: f64 = self.coeffs.iter().map(|&c| (c - mean).powi(2)).sum();
+        sum_sq / self.coeffs.len() as f64
+    }
+
+    /// Standard deviation of all coefficients.
+    ///
+    /// Square root of the variance.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// mv.std_coefficient()  # ~1.118
+    /// ```
+    pub fn std_coefficient(&self) -> f64 {
+        self.variance_coefficient().sqrt()
+    }
+
+    /// Median of all coefficients.
+    ///
+    /// For even number of coefficients, returns average of two middle values.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// mv.median_coefficient()  # 2.5
+    /// ```
+    pub fn median_coefficient(&self) -> f64 {
+        if self.coeffs.is_empty() {
+            return 0.0;
+        }
+        let mut sorted: Vec<f64> = self.coeffs.clone();
+        sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let n = sorted.len();
+        if n.is_multiple_of(2) {
+            (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+        } else {
+            sorted[n / 2]
+        }
+    }
+
+    /// Range of coefficients (max - min).
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    /// mv.range_coefficient()  # 8.0 (3 - (-5))
+    /// ```
+    pub fn range_coefficient(&self) -> f64 {
+        self.max_coefficient() - self.min_coefficient()
+    }
+
+    /// L1 norm (sum of absolute values of coefficients).
+    ///
+    /// Different from the geometric norm, this is the taxicab/Manhattan norm
+    /// of the coefficient vector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -2.0, 3.0, -4.0])
+    /// mv.l1_norm()  # 10.0
+    /// ```
+    pub fn l1_norm(&self) -> f64 {
+        self.coeffs.iter().map(|&c| c.abs()).sum()
+    }
+
+    /// L-infinity norm (maximum absolute coefficient).
+    ///
+    /// Also known as the supremum norm or Chebyshev norm.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    /// mv.linf_norm()  # 5.0
+    /// ```
+    pub fn linf_norm(&self) -> f64 {
+        self.coeffs.iter().map(|&c| c.abs()).fold(0.0_f64, f64::max)
+    }
+
     /// Spherical linear interpolation between two unit rotors.
     ///
     /// Interpolates from self (at t=0) to other (at t=1) along the

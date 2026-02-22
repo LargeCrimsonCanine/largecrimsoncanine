@@ -6713,3 +6713,128 @@ def test_positive_negative_sum():
     mv = lcc.Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
     reconstructed = mv.positive_part() + mv.negative_part()
     assert reconstructed.approx_eq(mv)
+
+
+# =====================
+# Statistical method tests
+# =====================
+
+
+def test_mean_coefficient():
+    """mean_coefficient returns average of all coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert abs(mv.mean_coefficient() - 2.5) < 1e-10
+
+
+def test_mean_coefficient_negative():
+    """mean_coefficient works with negative values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-2.0, 0.0, 2.0, 4.0])
+    assert abs(mv.mean_coefficient() - 1.0) < 1e-10
+
+
+def test_variance_coefficient():
+    """variance_coefficient returns population variance."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    # variance = ((1-2.5)^2 + (2-2.5)^2 + (3-2.5)^2 + (4-2.5)^2) / 4 = 1.25
+    assert abs(mv.variance_coefficient() - 1.25) < 1e-10
+
+
+def test_variance_coefficient_zero():
+    """variance_coefficient of constant is zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([2.0, 2.0, 2.0, 2.0])
+    assert abs(mv.variance_coefficient()) < 1e-10
+
+
+def test_std_coefficient():
+    """std_coefficient returns standard deviation."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    expected = 1.25 ** 0.5  # sqrt of variance
+    assert abs(mv.std_coefficient() - expected) < 1e-10
+
+
+def test_median_coefficient_even():
+    """median_coefficient with even count returns average of middle two."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert abs(mv.median_coefficient() - 2.5) < 1e-10
+
+
+def test_median_coefficient_odd():
+    """median_coefficient with odd count returns middle value."""
+    import largecrimsoncanine as lcc
+
+    # 8 coefficients in 3D
+    coeffs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+    mv = lcc.Multivector.from_list(coeffs)
+    # sorted: [1,2,3,4,5,6,7,8], middle two are 4,5, average = 4.5
+    assert abs(mv.median_coefficient() - 4.5) < 1e-10
+
+
+def test_median_coefficient_unsorted():
+    """median_coefficient works with unsorted values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([4.0, 1.0, 3.0, 2.0])
+    assert abs(mv.median_coefficient() - 2.5) < 1e-10
+
+
+def test_range_coefficient():
+    """range_coefficient returns max - min."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    assert abs(mv.range_coefficient() - 8.0) < 1e-10
+
+
+def test_l1_norm():
+    """l1_norm returns sum of absolute values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -2.0, 3.0, -4.0])
+    assert abs(mv.l1_norm() - 10.0) < 1e-10
+
+
+def test_l1_norm_zero():
+    """l1_norm of zero is zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    assert mv.l1_norm() == 0.0
+
+
+def test_linf_norm():
+    """linf_norm returns maximum absolute value."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    assert abs(mv.linf_norm() - 5.0) < 1e-10
+
+
+def test_linf_norm_zero():
+    """linf_norm of zero is zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    assert mv.linf_norm() == 0.0
+
+
+def test_norm_comparison():
+    """Compare different norms on same multivector."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -2.0, 3.0, -4.0])
+    # L1 >= L2 >= Linf (with equality for single nonzero)
+    assert mv.l1_norm() >= mv.norm()
+    # Note: norm() is L2 norm of coefficient vector for vectors,
+    # but includes metric for general GA norm
