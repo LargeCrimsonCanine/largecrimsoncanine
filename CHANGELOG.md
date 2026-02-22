@@ -31,6 +31,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Multivector.basis(index, dims)` — single basis vector
 - `Multivector.pseudoscalar(dims)` — unit pseudoscalar
 - `Multivector.from_axis_angle(axis, angle)` — 3D rotor from axis and angle
+- `Multivector.from_quaternion(w, x, y, z)` — 3D rotor from quaternion
+- `to_quaternion()` — convert 3D rotor to quaternion (w, x, y, z)
 
 **Arithmetic**
 - Addition, subtraction, negation (`+`, `-`, unary `-`)
@@ -109,7 +111,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (365 tests)
+- Python test suite (374 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

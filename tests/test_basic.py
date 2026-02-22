@@ -4407,3 +4407,154 @@ def test_grade_count_general():
 
     assert mv.grade_count() == 3
 
+
+# =============================================================================
+# QUATERNION INTEROP TESTS
+# =============================================================================
+
+def test_from_quaternion_identity():
+    """Identity quaternion (1, 0, 0, 0) gives identity rotor."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_quaternion(1.0, 0.0, 0.0, 0.0)
+
+    assert R.is_scalar()
+    assert abs(R.scalar() - 1.0) < 1e-10
+
+
+def test_from_quaternion_90_z():
+    """90-degree rotation around z-axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Quaternion for 90° around z: (cos(45°), 0, 0, sin(45°))
+    c = math.cos(math.pi / 4)
+    s = math.sin(math.pi / 4)
+    R = lcc.Multivector.from_quaternion(c, 0.0, 0.0, s)
+
+    # Apply to e1, should get e2
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    expected = [0.0, 1.0, 0.0]
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_quaternion_unit():
+    """Unit quaternion gives unit rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Normalized quaternion
+    c = math.cos(0.5)
+    s = math.sin(0.5)
+    R = lcc.Multivector.from_quaternion(c, s * 0.6, s * 0.8, 0.0)
+
+    assert R.is_unit()
+
+
+def test_to_quaternion_identity():
+    """Identity rotor gives identity quaternion."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+    w, x, y, z = R.to_quaternion()
+
+    assert abs(w - 1.0) < 1e-10
+    assert abs(x) < 1e-10
+    assert abs(y) < 1e-10
+    assert abs(z) < 1e-10
+
+
+def test_to_quaternion_roundtrip():
+    """from_quaternion and to_quaternion are inverses."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Start with arbitrary unit quaternion
+    w, x, y, z = 0.5, 0.5, 0.5, 0.5
+
+    R = lcc.Multivector.from_quaternion(w, x, y, z)
+    w2, x2, y2, z2 = R.to_quaternion()
+
+    assert abs(w - w2) < 1e-10
+    assert abs(x - x2) < 1e-10
+    assert abs(y - y2) < 1e-10
+    assert abs(z - z2) < 1e-10
+
+
+def test_to_quaternion_rotor():
+    """Rotor from vectors converts correctly."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    w, x, y, z = R.to_quaternion()
+
+    # 90° around z: (cos(45°), 0, 0, sin(45°))
+    expected_w = math.cos(math.pi / 4)
+    expected_z = math.sin(math.pi / 4)
+
+    assert abs(w - expected_w) < 1e-10
+    assert abs(x) < 1e-10
+    assert abs(y) < 1e-10
+    assert abs(z - expected_z) < 1e-10
+
+
+def test_to_quaternion_from_axis_angle():
+    """axis_angle rotor converts correctly."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 0.0, 0.0])  # x-axis
+    angle = math.pi / 3  # 60 degrees
+    R = lcc.Multivector.from_axis_angle(axis, angle)
+
+    w, x, y, z = R.to_quaternion()
+
+    # Quaternion: (cos(30°), sin(30°), 0, 0)
+    expected_w = math.cos(angle / 2)
+    expected_x = math.sin(angle / 2)
+
+    assert abs(w - expected_w) < 1e-10
+    assert abs(x - expected_x) < 1e-10
+    assert abs(y) < 1e-10
+    assert abs(z) < 1e-10
+
+
+def test_to_quaternion_requires_3d():
+    """to_quaternion raises error for non-3D."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="requires 3D"):
+        mv.to_quaternion()
+
+
+def test_quaternion_rotation_matches():
+    """Quaternion rotation matches rotor rotation."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Create rotor via axis-angle
+    axis = lcc.Multivector.from_vector([1.0, 1.0, 1.0])
+    R = lcc.Multivector.from_axis_angle(axis, 1.5)
+
+    # Convert to quaternion and back
+    w, x, y, z = R.to_quaternion()
+    R2 = lcc.Multivector.from_quaternion(w, x, y, z)
+
+    # Both should produce same rotation
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    rotated1 = R.sandwich(v)
+    rotated2 = R2.sandwich(v)
+
+    assert rotated1.approx_eq(rotated2, 1e-10)
+
