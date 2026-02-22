@@ -6606,3 +6606,110 @@ def test_sorted_blades_empty_for_zero():
 
     z = lcc.Multivector.zero(2)
     assert z.sorted_blades() == []
+
+
+# =====================
+# Filtering and transformation tests
+# =====================
+
+
+def test_filter_grades_single():
+    """filter_grades keeps only specified grade."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])  # grades 0,1,1,2
+    filtered = mv.filter_grades([1])
+    assert filtered.to_list()[0] == 0.0  # scalar removed
+    assert filtered.to_list()[1] == 2.0  # e1 kept
+    assert filtered.to_list()[2] == 3.0  # e2 kept
+    assert filtered.to_list()[3] == 0.0  # bivector removed
+
+
+def test_filter_grades_multiple():
+    """filter_grades keeps multiple grades."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    filtered = mv.filter_grades([0, 2])
+    assert filtered.to_list()[0] == 1.0  # scalar kept
+    assert filtered.to_list()[1] == 0.0  # e1 removed
+    assert filtered.to_list()[2] == 0.0  # e2 removed
+    assert filtered.to_list()[3] == 4.0  # bivector kept
+
+
+def test_filter_grades_empty():
+    """filter_grades with empty list returns zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    filtered = mv.filter_grades([])
+    assert filtered.is_zero()
+
+
+def test_threshold_basic():
+    """threshold zeros small coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([0.001, 1.0, 0.0001, 2.0])
+    result = mv.threshold(0.01)
+    assert result.to_list()[0] == 0.0
+    assert result.to_list()[1] == 1.0
+    assert result.to_list()[2] == 0.0
+    assert result.to_list()[3] == 2.0
+
+
+def test_threshold_negative():
+    """threshold works with negative coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-0.001, -1.0, 0.001, 1.0])
+    result = mv.threshold(0.01)
+    assert result.to_list()[0] == 0.0
+    assert result.to_list()[1] == -1.0
+    assert result.to_list()[2] == 0.0
+    assert result.to_list()[3] == 1.0
+
+
+def test_sign():
+    """sign returns -1, 0, or 1 for each coefficient."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-2.0, 0.0, 3.0, -0.5])
+    signs = mv.sign()
+    assert signs.to_list() == [-1.0, 0.0, 1.0, -1.0]
+
+
+def test_sign_zero():
+    """sign of zero multivector is all zeros."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(2)
+    signs = z.sign()
+    assert signs.to_list() == [0.0, 0.0, 0.0, 0.0]
+
+
+def test_positive_part():
+    """positive_part keeps only positive coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
+    pos = mv.positive_part()
+    assert pos.to_list() == [0.0, 2.0, 0.0, 4.0]
+
+
+def test_negative_part():
+    """negative_part keeps only negative coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
+    neg = mv.negative_part()
+    assert neg.to_list() == [-1.0, 0.0, -3.0, 0.0]
+
+
+def test_positive_negative_sum():
+    """positive_part + negative_part equals original."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
+    reconstructed = mv.positive_part() + mv.negative_part()
+    assert reconstructed.approx_eq(mv)
