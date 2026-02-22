@@ -5638,3 +5638,145 @@ def test_numerical_utils_immutable():
     # Original unchanged
     assert abs(original.coefficient(1) - 1.23456) < 1e-10
     assert abs(original.coefficient(2) - (-2.0)) < 1e-10
+
+
+# =====================
+# Grade and scalar manipulation tests
+# =====================
+
+
+def test_scale_grade_vector():
+    """scale_grade multiplies vector part."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    scaled = mv.scale_grade(1, 2.0)
+
+    # Vector part doubled
+    assert abs(scaled.coefficient(1) - 2.0) < 1e-10
+    assert abs(scaled.coefficient(2) - 4.0) < 1e-10
+    assert abs(scaled.coefficient(4) - 6.0) < 1e-10
+
+
+def test_scale_grade_scalar():
+    """scale_grade can scale scalar part."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(5.0, dims=2)
+    scaled = mv.scale_grade(0, 3.0)
+
+    assert abs(scaled.scalar() - 15.0) < 1e-10
+
+
+def test_scale_grade_preserves_others():
+    """scale_grade doesn't affect other grades."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector + bivector
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    scaled = mv.scale_grade(1, 10.0)
+
+    # Scalar unchanged
+    assert abs(scaled.coefficient(0) - 1.0) < 1e-10
+    # Vector scaled
+    assert abs(scaled.coefficient(1) - 20.0) < 1e-10
+    assert abs(scaled.coefficient(2) - 30.0) < 1e-10
+    # Bivector unchanged
+    assert abs(scaled.coefficient(3) - 4.0) < 1e-10
+
+
+def test_scale_grade_zero():
+    """scale_grade with 0 clears grade (like clear_grade)."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    scaled = mv.scale_grade(1, 0.0)
+
+    assert scaled.is_zero()
+
+
+def test_scale_grade_invalid():
+    """scale_grade raises error for invalid grade."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="exceeds"):
+        mv.scale_grade(5, 2.0)
+
+
+def test_add_scalar_basic():
+    """add_scalar adds to scalar part."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    mv = v.add_scalar(5.0)
+
+    assert abs(mv.scalar() - 5.0) < 1e-10
+    # Vector part unchanged
+    assert abs(mv.coefficient(1) - 1.0) < 1e-10
+    assert abs(mv.coefficient(2) - 2.0) < 1e-10
+
+
+def test_add_scalar_to_existing():
+    """add_scalar adds to existing scalar."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(3.0, dims=2)
+    mv2 = mv.add_scalar(7.0)
+
+    assert abs(mv2.scalar() - 10.0) < 1e-10
+
+
+def test_add_scalar_negative():
+    """add_scalar works with negative values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(5.0, dims=2)
+    mv2 = mv.add_scalar(-3.0)
+
+    assert abs(mv2.scalar() - 2.0) < 1e-10
+
+
+def test_with_scalar_basic():
+    """with_scalar sets scalar part."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    mv = v.with_scalar(10.0)
+
+    assert abs(mv.scalar() - 10.0) < 1e-10
+    # Vector part unchanged
+    assert abs(mv.coefficient(1) - 1.0) < 1e-10
+
+
+def test_with_scalar_replaces():
+    """with_scalar replaces existing scalar."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(100.0, dims=2)
+    mv2 = mv.with_scalar(5.0)
+
+    assert abs(mv2.scalar() - 5.0) < 1e-10
+
+
+def test_with_scalar_zero():
+    """with_scalar can set to zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(5.0, dims=2)
+    mv2 = mv.with_scalar(0.0)
+
+    assert mv2.scalar() == 0.0
+
+
+def test_scalar_utils_immutable():
+    """Scalar utils don't modify original."""
+    import largecrimsoncanine as lcc
+
+    original = lcc.Multivector.from_scalar(5.0, dims=2)
+    _ = original.scale_grade(0, 10.0)
+    _ = original.add_scalar(100.0)
+    _ = original.with_scalar(999.0)
+
+    assert abs(original.scalar() - 5.0) < 1e-10

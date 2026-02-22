@@ -95,6 +95,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `grade_count()` — number of distinct grades
 - `negate_grade(k)` — negate coefficients of grade k
 - `clear_grade(k)` — zero out coefficients of grade k
+- `scale_grade(k, factor)` — multiply grade k by factor
+- `add_scalar(value)` — add value to scalar part
+- `with_scalar(value)` — set scalar part to value
 - `is_pseudoscalar()` — check if highest grade only
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs

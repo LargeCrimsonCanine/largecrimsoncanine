@@ -725,6 +725,84 @@ impl Multivector {
         })
     }
 
+    /// Scale a specific grade by a factor.
+    ///
+    /// Returns a new multivector with grade k coefficients multiplied by factor.
+    /// All other grades are unchanged.
+    ///
+    /// Example:
+    /// ```python
+    /// # Double the vector part
+    /// mv2 = mv.scale_grade(1, 2.0)
+    ///
+    /// # Halve the bivector part
+    /// mv2 = mv.scale_grade(2, 0.5)
+    /// ```
+    ///
+    /// # Errors
+    /// Returns an error if k exceeds the algebra dimension.
+    pub fn scale_grade(&self, k: usize, factor: f64) -> PyResult<Self> {
+        if k > self.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "grade {} exceeds algebra dimension {} (max grade is {})",
+                k, self.dims, self.dims
+            )));
+        }
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                if algebra::blade_grade(i) == k {
+                    c * factor
+                } else {
+                    c
+                }
+            })
+            .collect();
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+        })
+    }
+
+    /// Add a scalar value to this multivector.
+    ///
+    /// Returns a new multivector with the scalar part increased by value.
+    /// Equivalent to `mv + Multivector.from_scalar(value, mv.dims)`.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0])
+    /// mv = v.add_scalar(5.0)  # 5 + e1 + 2*e2
+    /// mv.scalar()  # 5.0
+    /// ```
+    pub fn add_scalar(&self, value: f64) -> Self {
+        let mut coeffs = self.coeffs.clone();
+        coeffs[0] += value;
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Return a copy with the scalar part set to a specific value.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.0, 2.0])
+    /// mv2 = mv.with_scalar(10.0)  # 10 + e1 + 2*e2
+    /// mv2.scalar()  # 10.0
+    /// ```
+    pub fn with_scalar(&self, value: f64) -> Self {
+        let mut coeffs = self.coeffs.clone();
+        coeffs[0] = value;
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
     /// Compute the geometric product of two multivectors.
     ///
     /// The geometric product is the fundamental operation of Clifford algebra.
