@@ -102,6 +102,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `coefficient(index)` — get coefficient by blade index
 - `distance(other)` — Euclidean distance between two vectors
 - `midpoint(other)` — midpoint between two vectors
+- `round_coefficients(ndigits)` — round coefficients to n decimal places
+- `clean(epsilon)` — set near-zero coefficients to zero
+- `abs_coefficients()` — absolute value of all coefficients
+- `clamp_coefficients(min, max)` — clamp coefficients to range
 
 **Serialization**
 - `to_dict()` — serialize to dictionary (coeffs, dims)

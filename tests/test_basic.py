@@ -5501,3 +5501,140 @@ def test_set_coefficient_chain():
     assert abs(mv2.coefficient(0) - 1.0) < 1e-10
     assert abs(mv2.coefficient(1) - 2.0) < 1e-10
     assert abs(mv2.coefficient(2) - 3.0) < 1e-10
+
+
+# =====================
+# Numerical utility tests
+# =====================
+
+
+def test_round_coefficients_basic():
+    """round_coefficients rounds to specified digits."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.23456, 2.34567])
+    rounded = mv.round_coefficients(2)
+
+    assert abs(rounded.coefficient(1) - 1.23) < 1e-10
+    assert abs(rounded.coefficient(2) - 2.35) < 1e-10
+
+
+def test_round_coefficients_zero():
+    """round_coefficients with 0 digits rounds to integers."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.6, 2.4])
+    rounded = mv.round_coefficients(0)
+
+    assert abs(rounded.coefficient(1) - 2.0) < 1e-10
+    assert abs(rounded.coefficient(2) - 2.0) < 1e-10
+
+
+def test_round_coefficients_negative():
+    """round_coefficients with negative digits."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([123.0, 456.0])
+    rounded = mv.round_coefficients(-1)
+
+    assert abs(rounded.coefficient(1) - 120.0) < 1e-10
+    assert abs(rounded.coefficient(2) - 460.0) < 1e-10
+
+
+def test_clean_basic():
+    """clean sets near-zero values to zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 1e-15, 0.5, 1e-12])
+    cleaned = mv.clean(1e-10)
+
+    assert abs(cleaned.coefficient(0) - 1.0) < 1e-15
+    assert cleaned.coefficient(1) == 0.0
+    assert abs(cleaned.coefficient(2) - 0.5) < 1e-15
+    assert cleaned.coefficient(3) == 0.0
+
+
+def test_clean_default_epsilon():
+    """clean uses default epsilon of 1e-10."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 1e-11])
+    cleaned = mv.clean()
+
+    assert abs(cleaned.coefficient(1) - 1.0) < 1e-15
+    assert cleaned.coefficient(2) == 0.0
+
+
+def test_clean_preserves_larger():
+    """clean preserves values larger than epsilon."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([0.001, 0.0001])
+    cleaned = mv.clean(1e-5)
+
+    assert abs(cleaned.coefficient(1) - 0.001) < 1e-15
+    assert abs(cleaned.coefficient(2) - 0.0001) < 1e-15
+
+
+def test_abs_coefficients_basic():
+    """abs_coefficients returns absolute values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([-1.0, 2.0, -3.0])
+    abs_mv = mv.abs_coefficients()
+
+    assert abs(abs_mv.coefficient(1) - 1.0) < 1e-10
+    assert abs(abs_mv.coefficient(2) - 2.0) < 1e-10
+    assert abs(abs_mv.coefficient(4) - 3.0) < 1e-10
+
+
+def test_abs_coefficients_mixed():
+    """abs_coefficients works on all grades."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-1.0, -2.0, 3.0, -4.0])
+    abs_mv = mv.abs_coefficients()
+
+    assert abs(abs_mv.coefficient(0) - 1.0) < 1e-10
+    assert abs(abs_mv.coefficient(1) - 2.0) < 1e-10
+    assert abs(abs_mv.coefficient(2) - 3.0) < 1e-10
+    assert abs(abs_mv.coefficient(3) - 4.0) < 1e-10
+
+
+def test_clamp_coefficients_basic():
+    """clamp_coefficients clamps to range."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([0.5, 2.0, -1.0])
+    clamped = mv.clamp_coefficients(0.0, 1.0)
+
+    assert abs(clamped.coefficient(1) - 0.5) < 1e-10
+    assert abs(clamped.coefficient(2) - 1.0) < 1e-10
+    assert abs(clamped.coefficient(4) - 0.0) < 1e-10
+
+
+def test_clamp_coefficients_symmetric():
+    """clamp_coefficients with symmetric range."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([0.5, 2.0, -2.0])
+    clamped = mv.clamp_coefficients(-1.0, 1.0)
+
+    assert abs(clamped.coefficient(1) - 0.5) < 1e-10
+    assert abs(clamped.coefficient(2) - 1.0) < 1e-10
+    assert abs(clamped.coefficient(4) - (-1.0)) < 1e-10
+
+
+def test_numerical_utils_immutable():
+    """Numerical utils don't modify original."""
+    import largecrimsoncanine as lcc
+
+    original = lcc.Multivector.from_vector([1.23456, -2.0])
+    _ = original.round_coefficients(2)
+    _ = original.clean()
+    _ = original.abs_coefficients()
+    _ = original.clamp_coefficients(0.0, 1.0)
+
+    # Original unchanged
+    assert abs(original.coefficient(1) - 1.23456) < 1e-10
+    assert abs(original.coefficient(2) - (-2.0)) < 1e-10
