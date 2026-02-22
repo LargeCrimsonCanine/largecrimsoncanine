@@ -4849,3 +4849,127 @@ def test_euler_angles_unit_rotor():
     R = lcc.Multivector.from_euler_angles(1.0, 0.5, 0.3)
     assert R.is_unit()
 
+
+# =============================================================================
+# MORE OPERATORS TESTS
+# =============================================================================
+
+def test_pos_returns_copy():
+    """Unary + returns copy."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    pos_v = +v
+
+    assert pos_v.approx_eq(v, 1e-10)
+    assert pos_v is not v
+
+
+def test_pos_with_neg():
+    """+(-v) == -v and -(-v) == v."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert (+(-v)).approx_eq(-v, 1e-10)
+    assert (-(-v)).approx_eq(v, 1e-10)
+
+
+def test_invert_is_reverse():
+    """~ operator is reverse."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    # For vector, ~v = v
+    assert (~v).approx_eq(v.reverse(), 1e-10)
+
+    # For bivector, ~B = -B
+    assert (~B).approx_eq(B.reverse(), 1e-10)
+
+
+def test_invert_rotor():
+    """~R is inverse for unit rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # For unit rotor, R * ~R = 1
+    product = R * (~R)
+    assert abs(product.scalar() - 1.0) < 1e-10
+
+
+def test_invert_syntax():
+    """~ can be used in expressions."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # R * e1 * ~R (sandwich product)
+    rotated = R * e1 * ~R
+
+    assert rotated.is_vector()
+
+
+def test_negate_grade_vector():
+    """Negate grade 1 flips vector part."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector
+    s = lcc.Multivector.from_scalar(2.0, dims=2)
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    mv = s + v
+
+    negated = mv.negate_grade(1)
+
+    # Scalar unchanged, vector negated
+    assert abs(negated.scalar() - 2.0) < 1e-10
+    assert abs(negated.grade(1).to_list()[1] - (-3.0)) < 1e-10
+
+
+def test_negate_grade_scalar():
+    """Negate grade 0 flips scalar part."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector
+    s = lcc.Multivector.from_scalar(2.0, dims=2)
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    mv = s + v
+
+    negated = mv.negate_grade(0)
+
+    # Scalar negated, vector unchanged
+    assert abs(negated.scalar() - (-2.0)) < 1e-10
+    assert abs(negated.grade(1).to_list()[1] - 3.0) < 1e-10
+
+
+def test_negate_grade_is_grade_involution():
+    """Negating all odd grades equals grade involution."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector + bivector
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    mv = s + v + B
+
+    # Negate grade 1 (vectors), grade 3 (trivectors)
+    negated = mv.negate_grade(1).negate_grade(3)
+
+    assert negated.approx_eq(mv.grade_involution(), 1e-10)
+
+
+def test_negate_grade_invalid():
+    """Negate grade raises error for invalid grade."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="exceeds"):
+        mv.negate_grade(5)
+
