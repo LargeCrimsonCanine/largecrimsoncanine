@@ -316,6 +316,57 @@ impl Multivector {
         Ok(Multivector { coeffs, dims: 3 })
     }
 
+    /// Create a 3D rotor from quaternion components (w, x, y, z).
+    ///
+    /// Quaternion convention: q = w + x*i + y*j + z*k
+    ///
+    /// The mapping to geometric algebra is:
+    /// - w → scalar part
+    /// - (x, y, z) → bivector part (mapped to -e23, -e13, -e12)
+    ///
+    /// This uses the common convention where quaternion multiplication
+    /// matches rotor composition.
+    #[staticmethod]
+    pub fn from_quaternion(w: f64, x: f64, y: f64, z: f64) -> Self {
+        // Quaternion: q = w + x*i + y*j + z*k
+        // GA rotor mapping: i ↔ -e23, j ↔ -e13, k ↔ -e12
+        // So: R = w - x*e23 - y*e13 - z*e12
+        let mut coeffs = vec![0.0; 8];
+        coeffs[0] = w; // scalar
+        coeffs[3] = -z; // e12 (from -z*k)
+        coeffs[5] = -y; // e13 (from -y*j)
+        coeffs[6] = -x; // e23 (from -x*i)
+
+        Multivector { coeffs, dims: 3 }
+    }
+
+    /// Convert this 3D rotor to quaternion components (w, x, y, z).
+    ///
+    /// Returns (w, x, y, z) where q = w + x*i + y*j + z*k.
+    ///
+    /// Raises ValueError if not a 3D multivector.
+    ///
+    /// Note: Works best for unit rotors. Non-unit multivectors
+    /// will be converted but may not represent valid rotations.
+    pub fn to_quaternion(&self) -> PyResult<(f64, f64, f64, f64)> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "to_quaternion requires 3D multivector, got Cl({})",
+                self.dims
+            )));
+        }
+
+        // Inverse of the mapping in from_quaternion:
+        // R = w - x*e23 - y*e13 - z*e12
+        // So: w = coeffs[0], x = -coeffs[6], y = -coeffs[5], z = -coeffs[3]
+        let w = self.coeffs[0];
+        let x = -self.coeffs[6]; // e23
+        let y = -self.coeffs[5]; // e13
+        let z = -self.coeffs[3]; // e12
+
+        Ok((w, x, y, z))
+    }
+
     /// Create a bivector (grade-2) from components.
     ///
     /// For 2D: provide [e12_coeff]
