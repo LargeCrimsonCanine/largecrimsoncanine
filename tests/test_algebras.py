@@ -267,3 +267,77 @@ class TestBackwardCompatibility:
         # Wedge product
         ab = a ^ b
         assert ab.bivector_part().to_bivector_coords()[0] == pytest.approx(1.0)
+
+
+class TestAlgebraGetter:
+    """Test the algebra() getter method."""
+
+    def test_algebra_getter_with_explicit_algebra(self):
+        """Test algebra() returns the algebra for algebra-aware multivectors."""
+        PGA = Algebra.pga(3)
+        v = Multivector.zero_in(PGA)
+        alg = v.algebra()
+        assert alg is not None
+        assert alg == PGA
+
+    def test_algebra_getter_without_algebra(self):
+        """Test algebra() returns None for legacy multivectors."""
+        v = Multivector.from_vector([1, 2, 3])
+        alg = v.algebra()
+        assert alg is None
+
+    def test_algebra_propagates_through_products(self):
+        """Test that products preserve the algebra."""
+        STA = Algebra.sta()
+        gamma0 = Multivector.basis_in(1, STA)
+        gamma1 = Multivector.basis_in(2, STA)
+
+        product = gamma0 * gamma1
+        assert product.algebra() == STA
+
+
+class TestErrorConditions:
+    """Test error handling for invalid inputs."""
+
+    def test_basis_in_index_zero_error(self):
+        """Test that basis_in rejects index 0."""
+        PGA = Algebra.pga(3)
+        with pytest.raises(ValueError, match="out of range"):
+            Multivector.basis_in(0, PGA)
+
+    def test_basis_in_index_too_large_error(self):
+        """Test that basis_in rejects index > dimension."""
+        PGA = Algebra.pga(3)  # dimension 4
+        with pytest.raises(ValueError, match="out of range"):
+            Multivector.basis_in(5, PGA)
+
+    def test_vector_in_wrong_length_error(self):
+        """Test that vector_in rejects mismatched coordinate length."""
+        PGA = Algebra.pga(3)  # dimension 4
+        with pytest.raises(ValueError, match="doesn't match"):
+            Multivector.vector_in([1, 2, 3], PGA)  # 3 coords for dim-4 algebra
+
+
+class TestEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    def test_dimension_one_algebra(self):
+        """Test minimal 1D algebra."""
+        R1 = Algebra.euclidean(1)
+        assert R1.dimension == 1
+        assert R1.num_blades == 2  # scalar + e1
+
+        e1 = Multivector.basis_in(1, R1)
+        assert (e1 * e1).scalar() == pytest.approx(1.0)
+
+    def test_algebra_preserves_through_operations(self):
+        """Test algebra is preserved through various operations."""
+        CGA = Algebra.cga(2)  # 4D CGA
+        v = Multivector.vector_in([1, 0, 0, 0], CGA)
+
+        # Operations should preserve algebra
+        scaled = v * 2.0
+        assert scaled.algebra() == CGA
+
+        negated = -v
+        assert negated.algebra() == CGA

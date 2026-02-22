@@ -3,7 +3,7 @@ use crate::algebra::{self, Algebra, get_euclidean};
 use crate::pyalgebra::PyAlgebra;
 use pyo3::prelude::*;
 
-/// A multivector in the Clifford algebra Cl(n).
+/// A multivector in a Clifford algebra Cl(p,q,r).
 ///
 /// A multivector is the fundamental object of geometric algebra.
 /// It is a sum of components of different grades: scalars (grade 0),
@@ -13,8 +13,11 @@ use pyo3::prelude::*;
 /// Basis blade ordering follows the canonical binary representation:
 /// index 0 = scalar, index 1 = e1, index 2 = e2, index 3 = e12, etc.
 ///
-/// Current limitation: assumes Euclidean metric (all basis vectors square to +1).
-/// Mixed-signature algebra Cl(p,q,r) support is planned. See ARCHITECTURE.md.
+/// Supports arbitrary metric signatures including:
+/// - Euclidean: Cl(n,0,0) where all basis vectors square to +1
+/// - PGA: Cl(n,0,1) with one degenerate (null) basis vector
+/// - CGA: Cl(n+1,1,0) for conformal geometry
+/// - STA: Cl(1,3,0) for spacetime (Minkowski) physics
 ///
 /// Reference: Dorst et al. ch.2 [VERIFY]
 #[pyclass(eq, hash, frozen)]
@@ -1419,10 +1422,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.3 [VERIFY]
     pub fn geometric_product(&self, other: &Multivector) -> PyResult<Self> {
-        if self.dims != other.dims {
+        if !self.same_algebra(other) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
-                both multivectors must have the same dimension",
+                "algebra mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must be in the same algebra",
                 self.dims, other.dims
             )));
         }
@@ -1446,7 +1449,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         })
     }
 
@@ -1465,10 +1468,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn outer_product(&self, other: &Multivector) -> PyResult<Self> {
-        if self.dims != other.dims {
+        if !self.same_algebra(other) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
-                both multivectors must have the same dimension",
+                "algebra mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must be in the same algebra",
                 self.dims, other.dims
             )));
         }
@@ -1496,7 +1499,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         })
     }
 
@@ -1517,10 +1520,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn left_contraction(&self, other: &Multivector) -> PyResult<Self> {
-        if self.dims != other.dims {
+        if !self.same_algebra(other) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
-                both multivectors must have the same dimension",
+                "algebra mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must be in the same algebra",
                 self.dims, other.dims
             )));
         }
@@ -1558,7 +1561,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         })
     }
 
@@ -1584,10 +1587,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn right_contraction(&self, other: &Multivector) -> PyResult<Self> {
-        if self.dims != other.dims {
+        if !self.same_algebra(other) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
-                both multivectors must have the same dimension",
+                "algebra mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must be in the same algebra",
                 self.dims, other.dims
             )));
         }
@@ -1625,7 +1628,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         })
     }
 
@@ -1646,10 +1649,10 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.2 [VERIFY]
     pub fn scalar_product(&self, other: &Multivector) -> PyResult<Self> {
-        if self.dims != other.dims {
+        if !self.same_algebra(other) {
             return Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
-                both multivectors must have the same dimension",
+                "algebra mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must be in the same algebra",
                 self.dims, other.dims
             )));
         }
@@ -1673,7 +1676,14 @@ impl Multivector {
             }
         }
 
-        Multivector::from_scalar(scalar, self.dims)
+        let size = self.coeffs.len();
+        let mut coeffs = vec![0.0; size];
+        coeffs[0] = scalar;
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+            algebra_opt: self.algebra_opt.clone(),
+        })
     }
 
     /// Alias for scalar_product (dot product notation).
@@ -2095,7 +2105,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         }
     }
 
@@ -2118,7 +2128,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         }
     }
 
@@ -2684,7 +2694,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
-            algebra_opt: None,
+            algebra_opt: self.algebra_opt.clone(),
         }
     }
 

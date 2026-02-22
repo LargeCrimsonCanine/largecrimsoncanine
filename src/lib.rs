@@ -19,7 +19,9 @@ pub use algebra::{Algebra, Signature};
 ///
 /// Registers all types and functions exposed to Python.
 #[pymodule]
+#[pyo3(name = "largecrimsoncanine")]
 fn largecrimsoncanine(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     m.add_class::<Multivector>()?;
     m.add_class::<PyAlgebra>()?;
     Ok(())
