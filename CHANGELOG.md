@@ -103,6 +103,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `components()` — list of (index, coefficient) pairs
 - `blade_indices()` — list of non-zero blade indices
 - `coefficient(index)` — get coefficient by blade index
+- `sum_coefficients()` — sum of all coefficients
+- `max_coefficient()` — maximum coefficient value
+- `min_coefficient()` — minimum coefficient value
+- `nonzero_count()` — count of non-zero coefficients
 - `distance(other)` — Euclidean distance between two vectors
 - `midpoint(other)` — midpoint between two vectors
 - `round_coefficients(ndigits)` — round coefficients to n decimal places

@@ -5780,3 +5780,105 @@ def test_scalar_utils_immutable():
     _ = original.with_scalar(999.0)
 
     assert abs(original.scalar() - 5.0) < 1e-10
+
+
+# =====================
+# Coefficient statistics tests
+# =====================
+
+
+def test_sum_coefficients_basic():
+    """sum_coefficients returns sum of all coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert abs(mv.sum_coefficients() - 10.0) < 1e-10
+
+
+def test_sum_coefficients_vector():
+    """sum_coefficients works with vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    # Includes the zero scalar and bivector/trivector parts
+    assert abs(v.sum_coefficients() - 6.0) < 1e-10
+
+
+def test_sum_coefficients_negative():
+    """sum_coefficients handles negative values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -2.0, 3.0, -4.0])
+    assert abs(mv.sum_coefficients() - (-2.0)) < 1e-10
+
+
+def test_sum_coefficients_zero():
+    """sum_coefficients of zero multivector is 0."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(3)
+    assert mv.sum_coefficients() == 0.0
+
+
+def test_max_coefficient_basic():
+    """max_coefficient returns largest coefficient."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    assert abs(mv.max_coefficient() - 3.0) < 1e-10
+
+
+def test_max_coefficient_all_negative():
+    """max_coefficient works with all negative values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([-1.0, -5.0, -3.0, -2.0])
+    assert abs(mv.max_coefficient() - (-1.0)) < 1e-10
+
+
+def test_min_coefficient_basic():
+    """min_coefficient returns smallest coefficient."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    assert abs(mv.min_coefficient() - (-5.0)) < 1e-10
+
+
+def test_min_coefficient_all_positive():
+    """min_coefficient works with all positive values."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 5.0, 3.0, 2.0])
+    assert abs(mv.min_coefficient() - 1.0) < 1e-10
+
+
+def test_nonzero_count_basic():
+    """nonzero_count returns count of non-zero coefficients."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 0.0, 3.0])
+    assert mv.nonzero_count() == 2
+
+
+def test_nonzero_count_all_nonzero():
+    """nonzero_count when all are non-zero."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert mv.nonzero_count() == 4
+
+
+def test_nonzero_count_zero():
+    """nonzero_count of zero multivector is 0."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(3)
+    assert mv.nonzero_count() == 0
+
+
+def test_nonzero_count_sparse():
+    """nonzero_count works with sparse multivectors."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
+    assert mv.nonzero_count() == 1

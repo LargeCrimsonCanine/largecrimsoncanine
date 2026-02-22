@@ -2250,6 +2250,55 @@ impl Multivector {
             .collect()
     }
 
+    /// Sum of all coefficients.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// mv.sum_coefficients()  # 10.0
+    /// ```
+    pub fn sum_coefficients(&self) -> f64 {
+        self.coeffs.iter().sum()
+    }
+
+    /// Maximum coefficient value.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    /// mv.max_coefficient()  # 3.0
+    /// ```
+    pub fn max_coefficient(&self) -> f64 {
+        self.coeffs
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+
+    /// Minimum coefficient value.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -5.0, 3.0, 2.0])
+    /// mv.min_coefficient()  # -5.0
+    /// ```
+    pub fn min_coefficient(&self) -> f64 {
+        self.coeffs.iter().copied().fold(f64::INFINITY, f64::min)
+    }
+
+    /// Count of non-zero coefficients.
+    ///
+    /// Useful for checking sparsity of a multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.0, 0.0, 3.0])
+    /// mv.nonzero_count()  # 2
+    /// ```
+    pub fn nonzero_count(&self) -> usize {
+        self.coeffs.iter().filter(|&&c| c != 0.0).count()
+    }
+
     /// Spherical linear interpolation between two unit rotors.
     ///
     /// Interpolates from self (at t=0) to other (at t=1) along the
