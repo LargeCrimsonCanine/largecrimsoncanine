@@ -35,6 +35,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `to_quaternion()` — convert 3D rotor to quaternion (w, x, y, z)
 - `Multivector.from_rotation_matrix(matrix)` — 3D rotor from 3x3 rotation matrix
 - `to_rotation_matrix()` — convert 3D rotor to 3x3 rotation matrix
+- `Multivector.from_euler_angles(yaw, pitch, roll)` — 3D rotor from Euler angles (ZYX)
+- `to_euler_angles()` — convert 3D rotor to Euler angles (yaw, pitch, roll)
 
 **Arithmetic**
 - Addition, subtraction, negation (`+`, `-`, unary `-`)
@@ -113,7 +115,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (384 tests)
+- Python test suite (393 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

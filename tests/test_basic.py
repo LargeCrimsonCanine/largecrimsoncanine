@@ -4716,3 +4716,136 @@ def test_from_rotation_matrix_wrong_size():
     with pytest.raises(ValueError, match="9 elements"):
         lcc.Multivector.from_rotation_matrix(mat)
 
+
+# =============================================================================
+# EULER ANGLES TESTS
+# =============================================================================
+
+def test_from_euler_angles_identity():
+    """Zero Euler angles give identity rotor."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_euler_angles(0.0, 0.0, 0.0)
+
+    assert R.is_rotor()
+    assert abs(R.scalar() - 1.0) < 1e-10
+
+
+def test_from_euler_angles_yaw_90():
+    """90-degree yaw rotates x to y."""
+    import largecrimsoncanine as lcc
+    import math
+
+    R = lcc.Multivector.from_euler_angles(math.pi / 2, 0.0, 0.0)
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    # x -> y
+    expected = [0.0, 1.0, 0.0]
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_euler_angles_pitch_90():
+    """90-degree pitch rotates x to z (nose up)."""
+    import largecrimsoncanine as lcc
+    import math
+
+    R = lcc.Multivector.from_euler_angles(0.0, math.pi / 2, 0.0)
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    # x -> z (positive pitch = nose up)
+    expected = [0.0, 0.0, 1.0]
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_euler_angles_roll_90():
+    """90-degree roll rotates y to z."""
+    import largecrimsoncanine as lcc
+    import math
+
+    R = lcc.Multivector.from_euler_angles(0.0, 0.0, math.pi / 2)
+
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    rotated = R.sandwich(e2)
+
+    # y -> z
+    expected = [0.0, 0.0, 1.0]
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_to_euler_angles_identity():
+    """Identity rotor gives zero Euler angles."""
+    import largecrimsoncanine as lcc
+
+    R = lcc.Multivector.from_scalar(1.0, dims=3)
+    yaw, pitch, roll = R.to_euler_angles()
+
+    assert abs(yaw) < 1e-10
+    assert abs(pitch) < 1e-10
+    assert abs(roll) < 1e-10
+
+
+def test_euler_angles_roundtrip():
+    """from_euler_angles and to_euler_angles are inverses."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # Arbitrary Euler angles (avoiding gimbal lock)
+    yaw = 0.3
+    pitch = 0.5
+    roll = 0.7
+
+    R = lcc.Multivector.from_euler_angles(yaw, pitch, roll)
+    y2, p2, r2 = R.to_euler_angles()
+
+    assert abs(yaw - y2) < 1e-10
+    assert abs(pitch - p2) < 1e-10
+    assert abs(roll - r2) < 1e-10
+
+
+def test_euler_angles_matches_axis_angle():
+    """Euler yaw matches axis-angle around z."""
+    import largecrimsoncanine as lcc
+    import math
+
+    angle = 1.23
+    R_euler = lcc.Multivector.from_euler_angles(angle, 0.0, 0.0)
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+    R_axis = lcc.Multivector.from_axis_angle(axis, angle)
+
+    # Both should produce same rotation
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    rotated1 = R_euler.sandwich(v)
+    rotated2 = R_axis.sandwich(v)
+
+    assert rotated1.approx_eq(rotated2, 1e-10)
+
+
+def test_to_euler_angles_requires_3d():
+    """to_euler_angles raises error for non-3D."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="requires 3D"):
+        mv.to_euler_angles()
+
+
+def test_euler_angles_unit_rotor():
+    """from_euler_angles produces unit rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    R = lcc.Multivector.from_euler_angles(1.0, 0.5, 0.3)
+    assert R.is_unit()
+
