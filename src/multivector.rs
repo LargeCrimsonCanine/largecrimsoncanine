@@ -15,7 +15,7 @@ use pyo3::prelude::*;
 /// Mixed-signature algebra Cl(p,q,r) support is planned. See ARCHITECTURE.md.
 ///
 /// Reference: Dorst et al. ch.2 [VERIFY]
-#[pyclass]
+#[pyclass(eq, hash, frozen)]
 #[derive(Debug, Clone)]
 pub struct Multivector {
     /// Coefficients for each basis blade.
@@ -24,6 +24,23 @@ pub struct Multivector {
 
     /// Dimension of the base vector space.
     pub dims: usize,
+}
+
+impl PartialEq for Multivector {
+    fn eq(&self, other: &Self) -> bool {
+        self.dims == other.dims && self.coeffs == other.coeffs
+    }
+}
+
+impl Eq for Multivector {}
+
+impl std::hash::Hash for Multivector {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.dims.hash(state);
+        for &c in &self.coeffs {
+            c.to_bits().hash(state);
+        }
+    }
 }
 
 /// Iterator over multivector coefficients.
@@ -1378,14 +1395,6 @@ impl Multivector {
         }
     }
 
-    /// Check equality of two multivectors.
-    ///
-    /// Uses exact floating-point comparison. For approximate comparison,
-    /// use `approx_eq` with a tolerance.
-    pub fn __eq__(&self, other: &Multivector) -> bool {
-        self.dims == other.dims && self.coeffs == other.coeffs
-    }
-
     /// Check approximate equality within a tolerance.
     ///
     /// Returns true if all coefficients differ by at most `tol`.
@@ -1589,6 +1598,31 @@ impl Multivector {
     /// Create a copy of this multivector.
     pub fn copy(&self) -> Self {
         self.clone()
+    }
+
+    /// Support for Python's copy.copy().
+    pub fn __copy__(&self) -> Self {
+        self.clone()
+    }
+
+    /// Support for Python's copy.deepcopy().
+    pub fn __deepcopy__(&self, _memo: pyo3::PyObject) -> Self {
+        self.clone()
+    }
+
+    /// Pickle support: get state as (coeffs, dims) tuple.
+    pub fn __getstate__(&self) -> (Vec<f64>, usize) {
+        (self.coeffs.clone(), self.dims)
+    }
+
+    /// Pickle support: reduce to constructor call.
+    ///
+    /// Returns (cls, args) where cls(*args) reconstructs the multivector.
+    pub fn __reduce__(&self) -> PyResult<(pyo3::PyObject, (Vec<f64>,))> {
+        pyo3::Python::with_gil(|py| {
+            let cls = py.get_type::<Multivector>();
+            Ok((cls.into_any().unbind(), (self.coeffs.clone(),)))
+        })
     }
 
     /// Serialize this multivector to a dictionary.
