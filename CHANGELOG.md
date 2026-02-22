@@ -30,6 +30,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Multivector.from_bivector(components, dims)` — bivector from components
 - `Multivector.basis(index, dims)` — single basis vector
 - `Multivector.pseudoscalar(dims)` — unit pseudoscalar
+- `Multivector.from_axis_angle(axis, angle)` — 3D rotor from axis and angle
 
 **Arithmetic**
 - Addition, subtraction, negation (`+`, `-`, unary `-`)
@@ -97,9 +98,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `bool()` function (`__bool__`) — non-zero check
 - `copy()` — explicit copy method
 - `coefficients()` — return all coefficients as list
+- `dimension` / `dims` — base vector space dimension (property)
+- `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (327 tests)
+- Python test suite (340 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
