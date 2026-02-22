@@ -7758,3 +7758,170 @@ def test_powf_sum_of_powers():
     R_sum = R.powf(1.0)  # 0.3 + 0.7 = 1.0
 
     assert R_ab.approx_eq(R_sum)
+
+
+# =============================================================================
+# SIGNED ANGLE AND ANALYSIS UTILITIES
+# =============================================================================
+
+
+def test_signed_angle_positive():
+    """signed_angle is positive for counterclockwise rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+
+    # e1 to e2 around e3 is counterclockwise (positive)
+    angle = e1.signed_angle(e2, e3)
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_signed_angle_negative():
+    """signed_angle is negative for clockwise rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+
+    # e2 to e1 around e3 is clockwise (negative)
+    angle = e2.signed_angle(e1, e3)
+    assert abs(angle + math.pi / 2) < 1e-10
+
+
+def test_signed_angle_opposite_normals():
+    """Flipping normal flips sign."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+    neg_e3 = -e3
+
+    angle_pos = e1.signed_angle(e2, e3)
+    angle_neg = e1.signed_angle(e2, neg_e3)
+
+    assert abs(angle_pos + angle_neg) < 1e-10
+
+
+def test_signed_angle_same_vector():
+    """signed_angle between same vector is zero."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e3 = lcc.Multivector.e3(3)
+
+    angle = e1.signed_angle(e1, e3)
+    assert abs(angle) < 1e-10
+
+
+def test_signed_angle_arbitrary():
+    """signed_angle works with arbitrary vectors."""
+    import math
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([-1.0, 1.0, 0.0])
+    normal = lcc.Multivector.e3(3)
+
+    angle = v1.signed_angle(v2, normal)
+    # This should be 90 degrees counterclockwise
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_grade_norm_scalar():
+    """grade_norm(0) gives norm of scalar part."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([3.0, 1.0, 2.0, 0.0])
+    scalar_norm = mv.grade_norm(0)
+
+    assert abs(scalar_norm - 3.0) < 1e-10
+
+
+def test_grade_norm_vector():
+    """grade_norm(1) gives norm of vector part."""
+    import math
+    import largecrimsoncanine as lcc
+
+    # 3D: indices 0=scalar, 1=e1, 2=e2, 4=e3
+    mv = lcc.Multivector.from_list([0.0, 3.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    vector_norm = mv.grade_norm(1)
+
+    # sqrt(3^2 + 4^2) = 5
+    assert abs(vector_norm - 5.0) < 1e-10
+
+
+def test_grade_norm_bivector():
+    """grade_norm(2) gives norm of bivector part."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    mv = e12.scale(2.0)
+
+    bivector_norm = mv.grade_norm(2)
+    assert abs(bivector_norm - 2.0) < 1e-10
+
+
+def test_grade_norm_zero_grade():
+    """grade_norm of empty grade is zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    scalar_norm = v.grade_norm(0)
+
+    assert abs(scalar_norm) < 1e-10
+
+
+def test_sparsity_full():
+    """sparsity of zero multivector is 1.0."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(3)
+    assert abs(mv.sparsity() - 1.0) < 1e-10
+
+
+def test_sparsity_dense():
+    """sparsity of fully populated multivector."""
+    import largecrimsoncanine as lcc
+
+    # All 4 coefficients non-zero
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert abs(mv.sparsity()) < 1e-10
+
+
+def test_sparsity_vector():
+    """sparsity of vector in 3D."""
+    import largecrimsoncanine as lcc
+
+    # Vector has 3 non-zero out of 8 coefficients
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    sparsity = v.sparsity()
+
+    # 5 zeros out of 8
+    assert abs(sparsity - 5.0 / 8.0) < 1e-10
+
+
+def test_density_complement():
+    """density + sparsity = 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert abs(v.sparsity() + v.density() - 1.0) < 1e-10
+
+
+def test_density_vector():
+    """density of vector in 3D."""
+    import largecrimsoncanine as lcc
+
+    # Vector has 3 non-zero out of 8 coefficients
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    density = v.density()
+
+    # 3 non-zeros out of 8
+    assert abs(density - 3.0 / 8.0) < 1e-10

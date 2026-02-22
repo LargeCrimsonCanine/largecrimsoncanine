@@ -58,6 +58,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 **Norms and Inverses**
 - `reverse()`, `tilde()` — reverse operation
 - `norm()`, `norm_squared()` — magnitude
+- `grade_norm(k)` — norm of grade-k part only
 - `normalized()` — unit multivector
 - `inverse()` — multiplicative inverse for blades/versors
 - `div()` — multivector division (A * B⁻¹)
@@ -145,6 +146,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `l1_norm()` — sum of absolute values (taxicab norm)
 - `linf_norm()` — maximum absolute value (Chebyshev norm)
 - `nonzero_count()` — count of non-zero coefficients
+- `sparsity()` — fraction of zero coefficients (0.0 to 1.0)
+- `density()` — fraction of non-zero coefficients (1.0 - sparsity)
 - `distance(other)` — Euclidean distance between two vectors
 - `midpoint(other)` — midpoint between two vectors
 - `round_coefficients(ndigits)` — round coefficients to n decimal places
@@ -163,6 +166,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 **Geometric Predicates**
 - `angle_between(other)` — angle between vectors in radians
+- `signed_angle(other, normal)` — signed angle with direction from normal
 - `cos_angle(other)`, `sin_angle(other)` — trig functions of angle
 - `is_parallel(other)` — check if vectors are parallel
 - `is_same_direction(other)` — check if vectors point same way
@@ -195,7 +199,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (641 tests)
+- Python test suite (655 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
