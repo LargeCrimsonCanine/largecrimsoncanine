@@ -7440,3 +7440,165 @@ def test_bivector_cyclic_duality():
     assert e12.dual().is_parallel(e3)
     assert e23.dual().is_parallel(e1)
     assert e31.dual().is_parallel(e2)
+
+
+# =============================================================================
+# EXTRACTION METHODS
+# =============================================================================
+
+
+def test_to_vector_coords_basic():
+    """to_vector_coords extracts vector components."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    coords = v.to_vector_coords()
+
+    assert len(coords) == 3
+    assert abs(coords[0] - 3.0) < 1e-10
+    assert abs(coords[1] - 4.0) < 1e-10
+    assert abs(coords[2] - 5.0) < 1e-10
+
+
+def test_to_vector_coords_2d():
+    """to_vector_coords works in 2D."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    coords = v.to_vector_coords()
+
+    assert len(coords) == 2
+    assert abs(coords[0] - 1.0) < 1e-10
+    assert abs(coords[1] - 2.0) < 1e-10
+
+
+def test_to_vector_coords_4d():
+    """to_vector_coords works in 4D."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0, 4.0])
+    coords = v.to_vector_coords()
+
+    assert len(coords) == 4
+    assert abs(coords[0] - 1.0) < 1e-10
+    assert abs(coords[1] - 2.0) < 1e-10
+    assert abs(coords[2] - 3.0) < 1e-10
+    assert abs(coords[3] - 4.0) < 1e-10
+
+
+def test_to_vector_coords_zero():
+    """to_vector_coords of zero vector gives zeros."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.zero(3)
+    coords = v.to_vector_coords()
+
+    assert len(coords) == 3
+    assert all(c == 0.0 for c in coords)
+
+
+def test_to_vector_coords_from_multivector():
+    """to_vector_coords extracts only grade-1 part."""
+    import largecrimsoncanine as lcc
+
+    # Create a multivector with scalar and vector parts
+    # Indices: 0=scalar, 1=e1, 2=e2, 3=e12, 4=e3, 5=e13, 6=e23, 7=e123
+    mv = lcc.Multivector.from_list([10.0, 3.0, 4.0, 0.0, 5.0, 0.0, 0.0, 0.0])
+    coords = mv.to_vector_coords()
+
+    # Should only get the vector coefficients (indices 1, 2, 4)
+    assert abs(coords[0] - 3.0) < 1e-10
+    assert abs(coords[1] - 4.0) < 1e-10
+    assert abs(coords[2] - 5.0) < 1e-10
+
+
+def test_to_bivector_coords_basic():
+    """to_bivector_coords extracts bivector components."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+    coords = B.to_bivector_coords()
+
+    assert len(coords) == 3
+    assert abs(coords[0] - 1.0) < 1e-10
+    assert abs(coords[1] - 2.0) < 1e-10
+    assert abs(coords[2] - 3.0) < 1e-10
+
+
+def test_to_bivector_coords_2d():
+    """to_bivector_coords in 2D gives single component."""
+    import largecrimsoncanine as lcc
+
+    # In 2D, only one bivector component (e12)
+    B = lcc.Multivector.e12(2)
+    coords = B.to_bivector_coords()
+
+    assert len(coords) == 1
+    assert abs(coords[0] - 1.0) < 1e-10
+
+
+def test_to_bivector_coords_4d():
+    """to_bivector_coords in 4D gives 6 components."""
+    import largecrimsoncanine as lcc
+
+    # Create a simple bivector in 4D
+    e1 = lcc.Multivector.e1(4)
+    e2 = lcc.Multivector.e2(4)
+    B = e1 ^ e2
+
+    coords = B.to_bivector_coords()
+    assert len(coords) == 6  # 4*(4-1)/2 = 6
+
+
+def test_to_bivector_coords_from_rotor():
+    """to_bivector_coords extracts bivector from rotor."""
+    import math
+    import largecrimsoncanine as lcc
+
+    # Create a 45-degree rotor
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    angle = math.pi / 4
+    B = (e1 ^ e2).scale(angle / 2)
+    R = B.exp()
+
+    # Extract bivector part coords
+    bivector_coords = R.to_bivector_coords()
+    assert len(bivector_coords) == 3
+
+
+def test_to_trivector_coords_basic():
+    """to_trivector_coords extracts trivector components."""
+    import largecrimsoncanine as lcc
+
+    # Create e123 and extract
+    e123 = lcc.Multivector.e123()
+    coords = e123.to_trivector_coords()
+
+    assert len(coords) == 1
+    assert abs(coords[0] - 1.0) < 1e-10
+
+
+def test_to_trivector_coords_4d():
+    """to_trivector_coords in 4D gives 4 components."""
+    import largecrimsoncanine as lcc
+
+    # In 4D, there are 4 trivector basis elements
+    e1 = lcc.Multivector.e1(4)
+    e2 = lcc.Multivector.e2(4)
+    e3 = lcc.Multivector.e3(4)
+    T = (e1 ^ e2) ^ e3
+
+    coords = T.to_trivector_coords()
+    assert len(coords) == 4  # 4*(4-1)*(4-2)/6 = 4
+
+
+def test_extraction_roundtrip():
+    """Extract and reconstruct preserves vector."""
+    import largecrimsoncanine as lcc
+
+    original = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    coords = original.to_vector_coords()
+    reconstructed = lcc.Multivector.from_vector(coords)
+
+    assert original.approx_eq(reconstructed)
