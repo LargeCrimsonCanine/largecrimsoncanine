@@ -1205,6 +1205,46 @@ impl Multivector {
         }
     }
 
+    /// Format the multivector with a custom format spec.
+    ///
+    /// Supports standard float format specs applied to each coefficient:
+    /// - `.2f` - 2 decimal places
+    /// - `.3e` - 3 decimal places in scientific notation
+    /// - `.4g` - 4 significant figures
+    /// - `+.2f` - always show sign, 2 decimal places
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.234, 2.567])
+    /// f"{mv:.2f}"  # "1.23*e1 + 2.57*e2"
+    /// format(mv, ".1e")  # "1.2e+00*e1 + 2.6e+00*e2"
+    /// ```
+    pub fn __format__(&self, spec: &str) -> PyResult<String> {
+        if spec.is_empty() {
+            return Ok(self.__str__());
+        }
+
+        let mut parts = Vec::new();
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            if c == 0.0 {
+                continue;
+            }
+            let blade_name = Self::blade_name(i);
+            // Parse the format spec and apply to the coefficient
+            let formatted = Self::format_float(c, spec)?;
+            if blade_name == "1" {
+                parts.push(formatted);
+            } else {
+                parts.push(format!("{}*{}", formatted, blade_name));
+            }
+        }
+        if parts.is_empty() {
+            Ok("0".to_string())
+        } else {
+            Ok(parts.join(" + "))
+        }
+    }
+
     /// Return the number of coefficients.
     pub fn __len__(&self) -> usize {
         self.coeffs.len()
@@ -3130,5 +3170,76 @@ impl Multivector {
             basis += 1;
         }
         name
+    }
+
+    /// Format a float according to a Python-style format spec.
+    ///
+    /// Supports: .Nf, .Ne, .Ng, +.Nf, etc.
+    fn format_float(value: f64, spec: &str) -> PyResult<String> {
+        // Parse basic format specs: [+].[precision][type]
+        let mut chars = spec.chars().peekable();
+        let mut show_sign = false;
+        let mut precision: Option<usize> = None;
+        let mut fmt_type = 'g'; // default
+
+        // Check for + sign
+        if chars.peek() == Some(&'+') {
+            show_sign = true;
+            chars.next();
+        }
+
+        // Check for .precision
+        if chars.peek() == Some(&'.') {
+            chars.next();
+            let mut prec_str = String::new();
+            while chars.peek().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+                prec_str.push(chars.next().unwrap());
+            }
+            if !prec_str.is_empty() {
+                precision = Some(prec_str.parse().unwrap());
+            }
+        }
+
+        // Check for type
+        if let Some(c) = chars.next() {
+            fmt_type = c;
+        }
+
+        // Validate no remaining characters
+        if chars.next().is_some() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Invalid format spec: {}",
+                spec
+            )));
+        }
+
+        let prec = precision.unwrap_or(6);
+        let formatted = match fmt_type {
+            'f' | 'F' => format!("{:.prec$}", value, prec = prec),
+            'e' => format!("{:.prec$e}", value, prec = prec),
+            'E' => format!("{:.prec$E}", value, prec = prec),
+            'g' | 'G' => {
+                // General format: use shortest of f or e
+                let f_fmt = format!("{:.prec$}", value, prec = prec);
+                let e_fmt = format!("{:.prec$e}", value, prec = prec);
+                if f_fmt.len() <= e_fmt.len() {
+                    f_fmt
+                } else {
+                    e_fmt
+                }
+            }
+            _ => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "Unknown format type: {}",
+                    fmt_type
+                )));
+            }
+        };
+
+        if show_sign && value >= 0.0 {
+            Ok(format!("+{}", formatted))
+        } else {
+            Ok(formatted)
+        }
     }
 }

@@ -6113,3 +6113,95 @@ def test_int_negative():
 
     mv = lcc.Multivector.from_scalar(-3.7, 2)
     assert int(mv) == -3
+
+
+# =====================
+# Format protocol tests
+# =====================
+
+
+def test_format_default():
+    """format(mv) with no spec returns str(mv)."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    assert format(mv) == str(mv)
+
+
+def test_format_fixed():
+    """format(mv, '.2f') formats with 2 decimal places."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.234, 2.567])
+    result = format(mv, ".2f")
+    assert "1.23*e1" in result
+    assert "2.57*e2" in result
+
+
+def test_format_scientific():
+    """format(mv, '.2e') formats in scientific notation."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1234.0, 0.00567])
+    result = format(mv, ".2e")
+    # Rust uses compact exponent format (e3 not e+03)
+    assert "1.23e3*e1" in result
+    assert "5.67e-3*e2" in result
+
+
+def test_format_with_sign():
+    """format(mv, '+.2f') always shows sign."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, -2.0])
+    result = format(mv, "+.2f")
+    assert "+1.00*e1" in result
+    assert "-2.00*e2" in result
+
+
+def test_format_fstring():
+    """f-string formatting works."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.234, 2.567])
+    result = f"{mv:.2f}"
+    assert "1.23*e1" in result
+    assert "2.57*e2" in result
+
+
+def test_format_scalar():
+    """format() works on scalar multivectors."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(3.14159, 2)
+    result = format(mv, ".2f")
+    assert result == "3.14"
+
+
+def test_format_zero():
+    """format() on zero multivector returns '0'."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    assert format(mv, ".2f") == "0"
+
+
+def test_format_general():
+    """format(mv, '.4g') uses general format."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1234.5, 0.001234])
+    result = format(mv, ".4g")
+    # General format chooses shortest representation
+    assert "e1" in result
+    assert "e2" in result
+
+
+def test_format_invalid_spec():
+    """Invalid format spec raises ValueError."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    with pytest.raises(ValueError):
+        format(mv, "invalid")
