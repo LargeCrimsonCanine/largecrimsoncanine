@@ -8293,3 +8293,258 @@ def test_double_reflection_equals_rotor():
     rotor_result = R.sandwich(v)
 
     assert double_ref.approx_eq(rotor_result)
+
+
+# ============================================================================
+# GEOMETRIC MEASURES TESTS
+# ============================================================================
+
+
+def test_area_unit_vectors():
+    """area of perpendicular unit vectors is 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    area = e1.area(e2)
+
+    assert abs(area - 1.0) < 1e-10
+
+
+def test_area_parallel_vectors():
+    """area of parallel vectors is 0."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+
+    area = v1.area(v2)
+
+    assert abs(area) < 1e-10
+
+
+def test_area_scaled_vectors():
+    """area scales with vector magnitudes."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 3.0, 0.0])
+
+    area = v1.area(v2)
+
+    assert abs(area - 6.0) < 1e-10
+
+
+def test_area_dimension_mismatch():
+    """area raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.e1(3)
+    v2 = lcc.Multivector.e1(4)
+
+    with pytest.raises(ValueError):
+        v1.area(v2)
+
+
+def test_volume_unit_cube():
+    """volume of unit cube is 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+
+    vol = e1.volume(e2, e3)
+
+    assert abs(vol - 1.0) < 1e-10
+
+
+def test_volume_coplanar_vectors():
+    """volume of coplanar vectors is 0."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    v3 = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+
+    vol = v1.volume(v2, v3)
+
+    assert abs(vol) < 1e-10
+
+
+def test_volume_scaled_vectors():
+    """volume scales with vector magnitudes."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 3.0, 0.0])
+    v3 = lcc.Multivector.from_vector([0.0, 0.0, 4.0])
+
+    vol = v1.volume(v2, v3)
+
+    assert abs(vol - 24.0) < 1e-10
+
+
+def test_volume_dimension_mismatch():
+    """volume raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.e1(3)
+    v2 = lcc.Multivector.e2(3)
+    v3 = lcc.Multivector.e1(4)
+
+    with pytest.raises(ValueError):
+        v1.volume(v2, v3)
+
+
+def test_angle_to_plane_in_plane():
+    """angle_to_plane is 0 for vectors in the plane."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    xy_plane = lcc.Multivector.e12(3)
+
+    angle = v.angle_to_plane(xy_plane)
+
+    assert abs(angle) < 1e-10
+
+
+def test_angle_to_plane_perpendicular():
+    """angle_to_plane is pi/2 for perpendicular vectors."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    xy_plane = lcc.Multivector.e12(3)
+
+    angle = e3.angle_to_plane(xy_plane)
+
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_angle_to_plane_diagonal():
+    """angle_to_plane for 45° diagonal."""
+    import math
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 1.0])
+    xy_plane = lcc.Multivector.e12(3)
+
+    angle = v.angle_to_plane(xy_plane)
+
+    assert abs(angle - math.pi / 4) < 1e-10
+
+
+def test_angle_to_plane_dimension_mismatch():
+    """angle_to_plane raises on dimension mismatch."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.e1(3)
+    plane = lcc.Multivector.e12(4)
+
+    with pytest.raises(ValueError):
+        v.angle_to_plane(plane)
+
+
+def test_distance_to_plane_basic():
+    """distance_to_plane returns perpendicular distance."""
+    import largecrimsoncanine as lcc
+
+    point = lcc.Multivector.from_vector([0.0, 0.0, 5.0])
+    xy_plane = lcc.Multivector.e12(3)
+    origin = lcc.Multivector.from_vector([0.0, 0.0, 0.0])
+
+    dist = point.distance_to_plane(xy_plane, origin)
+
+    assert abs(dist - 5.0) < 1e-10
+
+
+def test_distance_to_plane_in_plane():
+    """distance_to_plane is 0 for points in the plane."""
+    import largecrimsoncanine as lcc
+
+    point = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    xy_plane = lcc.Multivector.e12(3)
+    origin = lcc.Multivector.from_vector([0.0, 0.0, 0.0])
+
+    dist = point.distance_to_plane(xy_plane, origin)
+
+    assert abs(dist) < 1e-10
+
+
+def test_distance_to_plane_offset_plane():
+    """distance_to_plane works with offset planes."""
+    import largecrimsoncanine as lcc
+
+    point = lcc.Multivector.from_vector([0.0, 0.0, 10.0])
+    xy_plane = lcc.Multivector.e12(3)
+    point_on_plane = lcc.Multivector.from_vector([0.0, 0.0, 3.0])
+
+    dist = point.distance_to_plane(xy_plane, point_on_plane)
+
+    assert abs(dist - 7.0) < 1e-10
+
+
+def test_lies_in_plane_true():
+    """lies_in_plane returns True for vectors in the plane."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert v.lies_in_plane(xy_plane)
+
+
+def test_lies_in_plane_false():
+    """lies_in_plane returns False for vectors not in the plane."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 1.0, 1.0])
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert not v.lies_in_plane(xy_plane)
+
+
+def test_lies_in_plane_tolerance():
+    """lies_in_plane respects tolerance."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 1e-15])
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert v.lies_in_plane(xy_plane, tol=1e-10)
+    assert not v.lies_in_plane(xy_plane, tol=1e-20)
+
+
+def test_is_perpendicular_to_plane_true():
+    """is_perpendicular_to_plane returns True for normal vectors."""
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert e3.is_perpendicular_to_plane(xy_plane)
+
+
+def test_is_perpendicular_to_plane_false():
+    """is_perpendicular_to_plane returns False for non-normal vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 1.0, 1.0])
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert not v.is_perpendicular_to_plane(xy_plane)
+
+
+def test_is_perpendicular_to_plane_in_plane():
+    """is_perpendicular_to_plane returns False for vectors in the plane."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    xy_plane = lcc.Multivector.e12(3)
+
+    assert not e1.is_perpendicular_to_plane(xy_plane)
