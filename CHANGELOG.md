@@ -97,6 +97,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs
 - `blade_indices()` — list of non-zero blade indices
+- `distance(other)` — Euclidean distance between two vectors
+- `midpoint(other)` — midpoint between two vectors
+
+**Serialization**
+- `to_dict()` — serialize to dictionary (coeffs, dims)
+- `Multivector.from_dict(d)` — deserialize from dictionary
 
 **Geometric Predicates**
 - `angle_between(other)` — angle between vectors in radians

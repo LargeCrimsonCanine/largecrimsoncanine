@@ -4973,3 +4973,203 @@ def test_negate_grade_invalid():
     with pytest.raises(ValueError, match="exceeds"):
         mv.negate_grade(5)
 
+
+
+# =====================
+# Serialization tests
+# =====================
+
+
+def test_to_dict_basic():
+    """to_dict returns coeffs and dims."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    d = v.to_dict()
+
+    assert "coeffs" in d
+    assert "dims" in d
+    assert d["dims"] == 3
+    assert len(d["coeffs"]) == 8  # 2^3
+
+
+def test_from_dict_basic():
+    """from_dict reconstructs multivector."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    d = v.to_dict()
+    v2 = lcc.Multivector.from_dict(d)
+
+    assert v.approx_eq(v2, 1e-10)
+
+
+def test_serialization_roundtrip():
+    """to_dict -> from_dict preserves multivector."""
+    import largecrimsoncanine as lcc
+
+    # Test with more complex multivector (rotor)
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    d = R.to_dict()
+    R2 = lcc.Multivector.from_dict(d)
+
+    assert R.approx_eq(R2, 1e-10)
+
+
+def test_from_dict_missing_coeffs():
+    """from_dict raises error when coeffs missing."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(KeyError, match="coeffs"):
+        lcc.Multivector.from_dict({"dims": 3})
+
+
+def test_from_dict_missing_dims():
+    """from_dict raises error when dims missing."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(KeyError, match="dims"):
+        lcc.Multivector.from_dict({"coeffs": [0.0] * 8})
+
+
+def test_from_dict_invalid_length():
+    """from_dict raises error when coeffs length wrong."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="doesn't match"):
+        lcc.Multivector.from_dict({"coeffs": [0.0] * 4, "dims": 3})
+
+
+# =====================
+# Geometric utility tests
+# =====================
+
+
+def test_distance_basic():
+    """distance computes Euclidean distance."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 1.0])
+    v2 = lcc.Multivector.from_vector([4.0, 5.0])
+
+    # sqrt((4-1)^2 + (5-1)^2) = sqrt(9 + 16) = 5
+    d = v1.distance(v2)
+    assert abs(d - 5.0) < 1e-10
+
+
+def test_distance_3d():
+    """distance works in 3D."""
+    import largecrimsoncanine as lcc
+    import math
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = lcc.Multivector.from_vector([4.0, 6.0, 3.0])
+
+    # (4-1)^2 + (6-2)^2 + (3-3)^2 = 9 + 16 + 0 = 25
+    d = v1.distance(v2)
+    assert abs(d - 5.0) < 1e-10
+
+
+def test_distance_symmetric():
+    """distance is symmetric."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0])
+    v2 = lcc.Multivector.from_vector([5.0, 8.0])
+
+    assert abs(v1.distance(v2) - v2.distance(v1)) < 1e-10
+
+
+def test_distance_non_vector_self():
+    """distance raises error if self is not a vector."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+
+    with pytest.raises(ValueError, match="self is not a vector"):
+        s.distance(v)
+
+
+def test_distance_non_vector_other():
+    """distance raises error if other is not a vector."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+
+    with pytest.raises(ValueError, match="other is not a vector"):
+        v.distance(s)
+
+
+def test_midpoint_basic():
+    """midpoint computes average of two vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([2.0, 2.0])
+    v2 = lcc.Multivector.from_vector([6.0, 10.0])
+
+    mid = v1.midpoint(v2)
+    expected = lcc.Multivector.from_vector([4.0, 6.0])
+
+    assert mid.approx_eq(expected, 1e-10)
+
+
+def test_midpoint_3d():
+    """midpoint works in 3D."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = lcc.Multivector.from_vector([5.0, 8.0, 11.0])
+
+    mid = v1.midpoint(v2)
+    expected = lcc.Multivector.from_vector([3.0, 5.0, 7.0])
+
+    assert mid.approx_eq(expected, 1e-10)
+
+
+def test_midpoint_equidistant():
+    """midpoint is equidistant from both vectors."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 3.0])
+    v2 = lcc.Multivector.from_vector([7.0, 11.0])
+
+    mid = v1.midpoint(v2)
+
+    d1 = mid.distance(v1)
+    d2 = mid.distance(v2)
+
+    assert abs(d1 - d2) < 1e-10
+
+
+def test_midpoint_non_vector_self():
+    """midpoint raises error if self is not a vector."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+
+    with pytest.raises(ValueError, match="self is not a vector"):
+        s.midpoint(v)
+
+
+def test_midpoint_non_vector_other():
+    """midpoint raises error if other is not a vector."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+
+    with pytest.raises(ValueError, match="other is not a vector"):
+        v.midpoint(s)

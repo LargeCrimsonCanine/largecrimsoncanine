@@ -1258,6 +1258,102 @@ impl Multivector {
         self.clone()
     }
 
+    /// Serialize this multivector to a dictionary.
+    ///
+    /// Returns a dict with 'coeffs' (list of floats) and 'dims' (int).
+    /// Useful for JSON serialization.
+    pub fn to_dict(&self) -> std::collections::HashMap<String, pyo3::PyObject> {
+        use pyo3::IntoPyObjectExt;
+        pyo3::Python::with_gil(|py| {
+            let mut dict = std::collections::HashMap::new();
+            dict.insert(
+                "coeffs".to_string(),
+                self.coeffs.clone().into_py_any(py).unwrap(),
+            );
+            dict.insert("dims".to_string(), self.dims.into_py_any(py).unwrap());
+            dict
+        })
+    }
+
+    /// Create a multivector from a dictionary.
+    ///
+    /// The dict must have 'coeffs' (list of floats) and 'dims' (int).
+    #[staticmethod]
+    pub fn from_dict(
+        dict: std::collections::HashMap<String, pyo3::Py<pyo3::PyAny>>,
+    ) -> PyResult<Self> {
+        pyo3::Python::with_gil(|py| {
+            let coeffs: Vec<f64> = dict
+                .get("coeffs")
+                .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing 'coeffs' key"))?
+                .extract(py)?;
+
+            let dims: usize = dict
+                .get("dims")
+                .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("missing 'dims' key"))?
+                .extract(py)?;
+
+            // Validate
+            let expected_len = 1usize << dims;
+            if coeffs.len() != expected_len {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "coeffs length {} doesn't match dims {} (expected {})",
+                    coeffs.len(),
+                    dims,
+                    expected_len
+                )));
+            }
+
+            Ok(Multivector { coeffs, dims })
+        })
+    }
+
+    /// Compute the Euclidean distance between two vectors.
+    ///
+    /// This is the standard Euclidean distance: ||a - b||.
+    ///
+    /// Both multivectors must be pure vectors (grade 1 only).
+    ///
+    /// # Errors
+    /// Returns an error if either multivector is not a pure vector.
+    pub fn distance(&self, other: &Self) -> PyResult<f64> {
+        if !self.is_vector() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "distance() requires both arguments to be vectors (self is not a vector)",
+            ));
+        }
+        if !other.is_vector() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "distance() requires both arguments to be vectors (other is not a vector)",
+            ));
+        }
+        let diff = self.__sub__(other)?;
+        Ok(diff.norm())
+    }
+
+    /// Compute the midpoint between two vectors.
+    ///
+    /// Returns (a + b) / 2, the point equidistant from both vectors.
+    ///
+    /// Both multivectors must be pure vectors (grade 1 only).
+    ///
+    /// # Errors
+    /// Returns an error if either multivector is not a pure vector.
+    pub fn midpoint(&self, other: &Self) -> PyResult<Self> {
+        if !self.is_vector() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "midpoint() requires both arguments to be vectors (self is not a vector)",
+            ));
+        }
+        if !other.is_vector() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "midpoint() requires both arguments to be vectors (other is not a vector)",
+            ));
+        }
+        let sum = self.__add__(other)?;
+        Ok(sum.scale(0.5))
+    }
+
     /// Compute the reverse of this multivector.
     ///
     /// The reverse operation flips the order of basis vectors in each blade.
