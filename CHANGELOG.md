@@ -91,8 +91,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_antiparallel(other)` — check if vectors point opposite ways
 - `is_orthogonal(other)` — check if vectors are perpendicular
 
+**Python Protocols**
+- `**` operator (`__pow__`) — integer exponentiation with binary algorithm
+- `abs()` function (`__abs__`) — returns norm
+- `bool()` function (`__bool__`) — non-zero check
+- `copy()` — explicit copy method
+- `coefficients()` — return all coefficients as list
+
 **Infrastructure**
-- Python test suite (311 tests)
+- Python test suite (327 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
