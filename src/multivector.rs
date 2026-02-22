@@ -33,7 +33,7 @@ pub struct Multivector {
 
     /// Optional algebra for metric-aware operations.
     /// If None, uses default Euclidean algebra.
-    algebra_opt: Option<Arc<Algebra>>,
+    pub(crate) algebra_opt: Option<Arc<Algebra>>,
 }
 
 impl Multivector {
@@ -50,6 +50,19 @@ impl Multivector {
             (None, None) => self.dims == other.dims,
             (Some(a), None) => a.signature.is_euclidean() && a.signature.dimension() == other.dims,
             (None, Some(b)) => b.signature.is_euclidean() && b.signature.dimension() == self.dims,
+        }
+    }
+
+    /// Create a pseudoscalar in the same algebra as this multivector.
+    /// This internal helper preserves the algebra reference for operations like dual.
+    fn pseudoscalar_same_algebra(&self) -> Self {
+        let size = self.coeffs.len();
+        let mut coeffs = vec![0.0; size];
+        coeffs[size - 1] = 1.0;
+        Multivector {
+            coeffs,
+            dims: self.dims,
+            algebra_opt: self.algebra_opt.clone(),
         }
     }
 }
@@ -4221,7 +4234,8 @@ impl Multivector {
     /// Reference: Dorst et al. ch.3 [VERIFY]
     pub fn dual(&self) -> PyResult<Self> {
         // I = pseudoscalar, I⁻¹ = ~I / (I * ~I)
-        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        // Use algebra-preserving pseudoscalar to handle non-Euclidean algebras
+        let pseudoscalar = self.pseudoscalar_same_algebra();
         let ps_inv = pseudoscalar.inverse()?;
         self.geometric_product(&ps_inv)
     }
@@ -4240,7 +4254,8 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.3 [VERIFY]
     pub fn undual(&self) -> PyResult<Self> {
-        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        // Use algebra-preserving pseudoscalar to handle non-Euclidean algebras
+        let pseudoscalar = self.pseudoscalar_same_algebra();
         self.geometric_product(&pseudoscalar)
     }
 
@@ -4254,7 +4269,8 @@ impl Multivector {
     ///
     /// Reference: Dorst et al. ch.3 [VERIFY]
     pub fn right_dual(&self) -> PyResult<Self> {
-        let pseudoscalar = Multivector::pseudoscalar(self.dims)?;
+        // Use algebra-preserving pseudoscalar to handle non-Euclidean algebras
+        let pseudoscalar = self.pseudoscalar_same_algebra();
         let ps_inv = pseudoscalar.inverse()?;
         ps_inv.geometric_product(self)
     }

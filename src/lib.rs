@@ -9,6 +9,15 @@ pub mod algebra;
 mod multivector;
 mod pyalgebra;
 
+// PGA convenience methods (extends Multivector)
+mod pga;
+
+// CGA convenience methods (extends Multivector)
+mod cga;
+
+// STA convenience methods (extends Multivector)
+mod sta;
+
 pub use multivector::Multivector;
 pub use pyalgebra::PyAlgebra;
 
