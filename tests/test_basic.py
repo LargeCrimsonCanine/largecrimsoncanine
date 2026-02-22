@@ -5173,3 +5173,166 @@ def test_midpoint_non_vector_other():
 
     with pytest.raises(ValueError, match="other is not a vector"):
         v.midpoint(s)
+
+
+# =====================
+# Constructor utility tests
+# =====================
+
+
+def test_from_list_basic():
+    """from_list creates multivector from coefficients."""
+    import largecrimsoncanine as lcc
+
+    # 2D: [scalar, e1, e2, e12]
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+
+    assert mv.dims == 2
+    assert abs(mv.scalar() - 1.0) < 1e-10
+    assert mv.is_vector() == False  # Has multiple grades
+
+
+def test_from_list_roundtrip():
+    """from_list -> to_list preserves coefficients."""
+    import largecrimsoncanine as lcc
+
+    original = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
+    mv = lcc.Multivector.from_list(original)
+    result = mv.to_list()
+
+    assert result == original
+
+
+def test_from_list_3d():
+    """from_list works with 3D (8 coefficients)."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0] * 8  # 2^3 = 8
+    mv = lcc.Multivector.from_list(coeffs)
+
+    assert mv.dims == 3
+    assert len(mv.to_list()) == 8
+
+
+def test_from_list_not_power_of_2():
+    """from_list raises error for non-power-of-2 length."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="not a power of 2"):
+        lcc.Multivector.from_list([1.0, 2.0, 3.0])  # Length 3
+
+
+def test_from_list_empty():
+    """from_list raises error for empty list."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    with pytest.raises(ValueError, match="must not be empty"):
+        lcc.Multivector.from_list([])
+
+
+def test_from_list_matches_to_dict():
+    """from_list result matches from_dict for same data."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0, 2.0, 3.0, 4.0]
+    mv1 = lcc.Multivector.from_list(coeffs)
+    mv2 = lcc.Multivector.from_dict({"coeffs": coeffs, "dims": 2})
+
+    assert mv1.approx_eq(mv2, 1e-10)
+
+
+# =====================
+# Clear grade tests
+# =====================
+
+
+def test_clear_grade_scalar():
+    """clear_grade(0) removes scalar part."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    mv = s + v
+
+    cleared = mv.clear_grade(0)
+
+    # Scalar should be zero
+    assert abs(cleared.scalar()) < 1e-10
+    # Vector part should be unchanged
+    assert abs(cleared.grade(1).to_list()[1] - 3.0) < 1e-10
+
+
+def test_clear_grade_vector():
+    """clear_grade(1) removes vector part."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector
+    s = lcc.Multivector.from_scalar(5.0, dims=2)
+    v = lcc.Multivector.from_vector([3.0, 4.0])
+    mv = s + v
+
+    cleared = mv.clear_grade(1)
+
+    # Scalar should be unchanged
+    assert abs(cleared.scalar() - 5.0) < 1e-10
+    # Vector part should be zero
+    assert cleared.grade(1).is_zero()
+
+
+def test_clear_grade_bivector():
+    """clear_grade(2) removes bivector part."""
+    import largecrimsoncanine as lcc
+
+    # scalar + bivector
+    s = lcc.Multivector.from_scalar(2.0, dims=3)
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    mv = s + B
+
+    cleared = mv.clear_grade(2)
+
+    # Scalar unchanged
+    assert abs(cleared.scalar() - 2.0) < 1e-10
+    # Bivector gone
+    assert cleared.grade(2).is_zero()
+
+
+def test_clear_grade_idempotent():
+    """clear_grade twice is same as once."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    once = mv.clear_grade(1)
+    twice = once.clear_grade(1)
+
+    assert once.approx_eq(twice, 1e-10)
+
+
+def test_clear_grade_invalid():
+    """clear_grade raises error for invalid grade."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="exceeds"):
+        mv.clear_grade(5)
+
+
+def test_clear_grade_preserves_other_grades():
+    """clear_grade only affects the specified grade."""
+    import largecrimsoncanine as lcc
+
+    # All grades: scalar + vector + bivector
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+
+    # Clear vector (grade 1)
+    cleared = mv.clear_grade(1)
+
+    # Scalar (grade 0) unchanged
+    assert abs(cleared.grade(0).scalar() - 1.0) < 1e-10
+    # Bivector (grade 2) unchanged
+    assert abs(cleared.grade(2).to_list()[3] - 4.0) < 1e-10
+    # Vector (grade 1) is zero
+    assert cleared.grade(1).is_zero()

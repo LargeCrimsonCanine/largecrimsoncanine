@@ -106,6 +106,47 @@ impl Multivector {
         Ok(Multivector { coeffs, dims })
     }
 
+    /// Create a multivector from a list of coefficients.
+    ///
+    /// The length of the coefficient list must be a power of 2 (2^dims).
+    /// The dimension is inferred from the length.
+    ///
+    /// Coefficients are ordered by blade index:
+    /// - Index 0: scalar (1)
+    /// - Index 1: e1, Index 2: e2, Index 4: e3, ...
+    /// - Index 3: e12, Index 5: e13, Index 6: e23, ...
+    /// - etc.
+    ///
+    /// Example:
+    /// ```python
+    /// # 2D: [scalar, e1, e2, e12]
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// # Creates: 1 + 2*e1 + 3*e2 + 4*e12
+    /// ```
+    ///
+    /// # Errors
+    /// Returns an error if the length is not a power of 2.
+    #[staticmethod]
+    pub fn from_list(coeffs: Vec<f64>) -> PyResult<Self> {
+        let len = coeffs.len();
+        if len == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "coefficient list must not be empty",
+            ));
+        }
+        // Check if len is a power of 2
+        if (len & (len - 1)) != 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "coefficient list length {} is not a power of 2; \
+                expected 2^dims (e.g., 2, 4, 8, 16, ...)",
+                len
+            )));
+        }
+        // Compute dims: len = 2^dims, so dims = log2(len)
+        let dims = len.trailing_zeros() as usize;
+        Ok(Multivector { coeffs, dims })
+    }
+
     /// Create a vector (grade-1) multivector from coordinates.
     ///
     /// The length of coords determines the dimension.
@@ -618,6 +659,41 @@ impl Multivector {
             .iter()
             .enumerate()
             .map(|(i, &c)| if algebra::blade_grade(i) == k { -c } else { c })
+            .collect();
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
+        })
+    }
+
+    /// Clear (zero out) a specific grade of this multivector.
+    ///
+    /// Returns a new multivector with grade k coefficients set to zero.
+    /// All other grades are unchanged.
+    ///
+    /// Example:
+    /// ```python
+    /// # Remove the scalar part of a multivector
+    /// mv_no_scalar = mv.clear_grade(0)
+    ///
+    /// # Remove the vector part
+    /// mv_no_vector = mv.clear_grade(1)
+    /// ```
+    ///
+    /// # Errors
+    /// Returns an error if k exceeds the algebra dimension.
+    pub fn clear_grade(&self, k: usize) -> PyResult<Self> {
+        if k > self.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "grade {} exceeds algebra dimension {} (max grade is {})",
+                k, self.dims, self.dims
+            )));
+        }
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| if algebra::blade_grade(i) == k { 0.0 } else { c })
             .collect();
         Ok(Multivector {
             coeffs,
