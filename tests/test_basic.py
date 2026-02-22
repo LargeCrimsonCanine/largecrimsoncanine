@@ -7237,3 +7237,206 @@ def test_nlerp_opposite_vectors():
     # At t=0.5, lerp gives zero vector, normalization should fail
     with pytest.raises(ValueError, match="zero"):
         v1.nlerp(v2, 0.5)
+
+
+# =============================================================================
+# BASIS CONSTRUCTORS
+# =============================================================================
+
+
+def test_e4_basic():
+    """e4 creates fourth basis vector."""
+    import largecrimsoncanine as lcc
+
+    e4 = lcc.Multivector.e4(4)
+    expected = lcc.Multivector.basis(4, 4)
+
+    assert e4.approx_eq(expected)
+
+
+def test_e4_dimension_check():
+    """e4 raises error for dimension < 4."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    with pytest.raises(ValueError, match="dimension >= 4"):
+        lcc.Multivector.e4(3)
+
+
+def test_e4_is_unit():
+    """e4 has unit norm."""
+    import largecrimsoncanine as lcc
+
+    e4 = lcc.Multivector.e4(4)
+    assert abs(e4.norm() - 1.0) < 1e-10
+
+
+def test_e4_squares_to_one():
+    """e4 * e4 = 1 in Euclidean space."""
+    import largecrimsoncanine as lcc
+
+    e4 = lcc.Multivector.e4(4)
+    e4_squared = e4 * e4
+
+    one = lcc.Multivector.from_scalar(1.0, 4)
+    assert e4_squared.approx_eq(one)
+
+
+def test_e12_basic():
+    """e12 creates e1∧e2 bivector."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+
+    # e12 should be the wedge of e1 and e2
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    expected = e1 ^ e2
+
+    assert e12.approx_eq(expected)
+
+
+def test_e12_dimension_check():
+    """e12 raises error for dimension < 2."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    with pytest.raises(ValueError, match="dimension >= 2"):
+        lcc.Multivector.e12(1)
+
+
+def test_e12_squares_to_minus_one():
+    """e12 * e12 = -1 in Euclidean space."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    e12_squared = e12 * e12
+
+    minus_one = lcc.Multivector.from_scalar(-1.0, 3)
+    assert e12_squared.approx_eq(minus_one)
+
+
+def test_e23_basic():
+    """e23 creates e2∧e3 bivector."""
+    import largecrimsoncanine as lcc
+
+    e23 = lcc.Multivector.e23(3)
+
+    # e23 should be the wedge of e2 and e3
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+    expected = e2 ^ e3
+
+    assert e23.approx_eq(expected)
+
+
+def test_e23_dimension_check():
+    """e23 raises error for dimension < 3."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    with pytest.raises(ValueError, match="dimension >= 3"):
+        lcc.Multivector.e23(2)
+
+
+def test_e31_basic():
+    """e31 creates e3∧e1 bivector."""
+    import largecrimsoncanine as lcc
+
+    e31 = lcc.Multivector.e31(3)
+
+    # e31 should be the wedge of e3 and e1
+    e3 = lcc.Multivector.e3(3)
+    e1 = lcc.Multivector.e1(3)
+    expected = e3 ^ e1
+
+    assert e31.approx_eq(expected)
+
+
+def test_e31_antisymmetry():
+    """e31 = -e13."""
+    import largecrimsoncanine as lcc
+
+    e31 = lcc.Multivector.e31(3)
+
+    e1 = lcc.Multivector.e1(3)
+    e3 = lcc.Multivector.e3(3)
+    e13 = e1 ^ e3
+
+    # e31 should be negative of e13
+    neg_e13 = -e13
+    assert e31.approx_eq(neg_e13)
+
+
+def test_e31_dimension_check():
+    """e31 raises error for dimension < 3."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    with pytest.raises(ValueError, match="dimension >= 3"):
+        lcc.Multivector.e31(2)
+
+
+def test_e123_basic():
+    """e123 creates the 3D pseudoscalar."""
+    import largecrimsoncanine as lcc
+
+    e123 = lcc.Multivector.e123()
+
+    # e123 should equal e1 ∧ e2 ∧ e3
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+    expected = (e1 ^ e2) ^ e3
+
+    assert e123.approx_eq(expected)
+
+
+def test_e123_equals_pseudoscalar():
+    """e123 equals pseudoscalar in 3D."""
+    import largecrimsoncanine as lcc
+
+    e123 = lcc.Multivector.e123()
+    ps = lcc.Multivector.pseudoscalar(3)
+
+    assert e123.approx_eq(ps)
+
+
+def test_e123_is_trivector():
+    """e123 is grade 3."""
+    import largecrimsoncanine as lcc
+
+    e123 = lcc.Multivector.e123()
+
+    assert e123.grades() == [3]
+
+
+def test_e123_squares_to_minus_one():
+    """e123 * e123 = -1 in Euclidean 3D."""
+    import largecrimsoncanine as lcc
+
+    e123 = lcc.Multivector.e123()
+    e123_squared = e123 * e123
+
+    minus_one = lcc.Multivector.from_scalar(-1.0, 3)
+    assert e123_squared.approx_eq(minus_one)
+
+
+def test_bivector_cyclic_duality():
+    """In 3D, dual of basis bivectors gives basis vectors."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    e23 = lcc.Multivector.e23(3)
+    e31 = lcc.Multivector.e31(3)
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    e3 = lcc.Multivector.e3(3)
+
+    # dual(e12) should be proportional to e3
+    # dual(e23) should be proportional to e1
+    # dual(e31) should be proportional to e2
+    assert e12.dual().is_parallel(e3)
+    assert e23.dual().is_parallel(e1)
+    assert e31.dual().is_parallel(e2)
