@@ -100,6 +100,12 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `rotate_by(rotor)` — apply rotor rotation to this multivector
 - `rotate_in_plane(angle, plane)` — rotate by angle in a given bivector plane
 - `project_onto_plane(plane)` — project onto a plane (bivector)
+- `area(other)` — signed area of parallelogram spanned by two vectors
+- `volume(b, c)` — signed volume of parallelepiped spanned by three vectors
+- `angle_to_plane(plane)` — angle between vector and plane
+- `distance_to_plane(plane, point_on_plane)` — perpendicular distance to plane
+- `lies_in_plane(plane)` — check if vector lies in a plane
+- `is_perpendicular_to_plane(plane)` — check if vector is perpendicular to plane
 - `triple_product(b, c)` — scalar triple product a·(b×c) in 3D
 - `unit()` — return unit (normalized) multivector (alias for normalized)
 
@@ -205,7 +211,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (682 tests)
+- Python test suite (703 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

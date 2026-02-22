@@ -4386,6 +4386,203 @@ impl Multivector {
         let n2_unit = n2.normalized()?;
         n2_unit.geometric_product(&n1_unit)
     }
+
+    /// Calculate the signed area of the parallelogram spanned by two vectors.
+    ///
+    /// This is the norm of the wedge product (outer product) of the two vectors.
+    /// For 2D vectors, this gives the signed area directly.
+    /// For 3D vectors, this gives the area of the parallelogram in the plane they span.
+    ///
+    /// # Arguments
+    /// * `other` - The second vector
+    ///
+    /// # Returns
+    /// The area of the parallelogram (always non-negative)
+    ///
+    /// # Example
+    /// ```python
+    /// a = Multivector.from_vector([1, 0, 0])
+    /// b = Multivector.from_vector([0, 1, 0])
+    /// area = a.area(b)  # Returns 1.0 (unit square)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn area(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let wedge = self.wedge(other)?;
+        Ok(wedge.norm())
+    }
+
+    /// Calculate the signed volume of the parallelepiped spanned by three vectors.
+    ///
+    /// This is the norm of the triple wedge product a ∧ b ∧ c.
+    /// In 3D, this equals |a · (b × c)|, the absolute scalar triple product.
+    ///
+    /// # Arguments
+    /// * `b` - The second vector
+    /// * `c` - The third vector
+    ///
+    /// # Returns
+    /// The volume of the parallelepiped (always non-negative)
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// e2 = Multivector.e2(3)
+    /// e3 = Multivector.e3(3)
+    /// vol = e1.volume(e2, e3)  # Returns 1.0 (unit cube)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn volume(&self, b: &Multivector, c: &Multivector) -> PyResult<f64> {
+        if self.dims != b.dims || self.dims != c.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: vectors have dimensions {}, {}, {}",
+                self.dims, b.dims, c.dims
+            )));
+        }
+        let ab = self.wedge(b)?;
+        let abc = ab.wedge(c)?;
+        Ok(abc.norm())
+    }
+
+    /// Calculate the angle between this vector and a plane (bivector).
+    ///
+    /// The angle to a plane is the complement of the angle to the plane's normal.
+    /// A vector in the plane has angle 0, perpendicular has angle π/2.
+    ///
+    /// # Arguments
+    /// * `plane` - A bivector representing the plane
+    ///
+    /// # Returns
+    /// The angle in radians (0 to π/2)
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 1, 1])  # Diagonal vector
+    /// xy_plane = Multivector.e12(3)
+    /// angle = v.angle_to_plane(xy_plane)  # Angle from xy-plane
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn angle_to_plane(&self, plane: &Multivector) -> PyResult<f64> {
+        if self.dims != plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: vector is Cl({}) but plane is Cl({})",
+                self.dims, plane.dims
+            )));
+        }
+        // The angle to the plane is π/2 minus the angle to the normal
+        // We can compute this using the dual of the plane
+        let plane_dual = plane.dual()?;
+        let angle_to_normal = self.angle_between(&plane_dual)?;
+        // Angle to plane is complement of angle to normal
+        Ok((std::f64::consts::FRAC_PI_2 - angle_to_normal).abs())
+    }
+
+    /// Calculate the perpendicular distance from this point to a plane.
+    ///
+    /// The plane is defined by a bivector (its orientation) and a point on the plane.
+    ///
+    /// # Arguments
+    /// * `plane` - A bivector representing the plane's orientation
+    /// * `point_on_plane` - Any point (vector) that lies on the plane
+    ///
+    /// # Returns
+    /// The perpendicular distance (always non-negative)
+    ///
+    /// # Example
+    /// ```python
+    /// point = Multivector.from_vector([0, 0, 5])
+    /// xy_plane = Multivector.e12(3)
+    /// origin = Multivector.from_vector([0, 0, 0])
+    /// dist = point.distance_to_plane(xy_plane, origin)  # Returns 5.0
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn distance_to_plane(&self, plane: &Multivector, point_on_plane: &Multivector) -> PyResult<f64> {
+        if self.dims != plane.dims || self.dims != point_on_plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: point is Cl({}), plane is Cl({}), point_on_plane is Cl({})",
+                self.dims, plane.dims, point_on_plane.dims
+            )));
+        }
+        // Get the normal to the plane (dual of bivector)
+        let normal = plane.dual()?.normalized()?;
+        // Vector from point_on_plane to this point
+        let displacement = self.__sub__(point_on_plane)?;
+        // Distance is absolute value of dot product with normal
+        let dist = displacement.scalar_product(&normal)?;
+        Ok(dist.scalar().abs())
+    }
+
+    /// Check if this vector lies in a plane (bivector).
+    ///
+    /// A vector lies in a plane if it is perpendicular to the plane's normal,
+    /// or equivalently if the wedge product with the plane is zero.
+    ///
+    /// # Arguments
+    /// * `plane` - A bivector representing the plane
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the vector lies in the plane
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([3, 4, 0])
+    /// xy_plane = Multivector.e12(3)
+    /// assert v.lies_in_plane(xy_plane)  # True, v is in xy-plane
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    #[pyo3(signature = (plane, tol=1e-10))]
+    pub fn lies_in_plane(&self, plane: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: vector is Cl({}) but plane is Cl({})",
+                self.dims, plane.dims
+            )));
+        }
+        // A vector lies in a plane if their wedge product is zero
+        let wedge = self.wedge(plane)?;
+        Ok(wedge.norm() < tol)
+    }
+
+    /// Check if this vector is perpendicular to a plane (parallel to its normal).
+    ///
+    /// # Arguments
+    /// * `plane` - A bivector representing the plane
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the vector is perpendicular to the plane
+    ///
+    /// # Example
+    /// ```python
+    /// e3 = Multivector.e3(3)
+    /// xy_plane = Multivector.e12(3)
+    /// assert e3.is_perpendicular_to_plane(xy_plane)  # True
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    #[pyo3(signature = (plane, tol=1e-10))]
+    pub fn is_perpendicular_to_plane(&self, plane: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: vector is Cl({}) but plane is Cl({})",
+                self.dims, plane.dims
+            )));
+        }
+        // A vector is perpendicular to a plane if its projection onto the plane is zero
+        let proj = self.project(plane)?;
+        Ok(proj.norm() < tol)
+    }
 }
 
 // Rust-only methods (not exposed to Python)
