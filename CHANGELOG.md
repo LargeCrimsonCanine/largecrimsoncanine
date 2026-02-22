@@ -59,6 +59,64 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Multivector.pseudoscalar_in(algebra)` — pseudoscalar in algebra
 - `multivector.algebra()` — get algebra if explicitly set
 
+**PGA Convenience Methods (Projective Geometric Algebra)**
+- `pga_point(coords)` — create point from Euclidean coordinates
+- `pga_plane(normal, distance)` — create plane from normal and distance
+- `pga_line_from_points(p1, p2)` — create line through two points
+- `pga_motor_from_axis_angle(axis, angle)` — create motor (rotation) from axis and angle
+- `pga_translator(direction, distance)` — create translator along direction
+- `pga_normalize()` — normalize PGA element (ideal norm = 1)
+- `pga_ideal_part()` — extract ideal (at infinity) part
+- `pga_euclidean_part()` — extract Euclidean (finite) part
+
+**CGA Convenience Methods (Conformal Geometric Algebra)**
+- `cga_eo()` — origin point (e_o = (e_- - e_+)/2)
+- `cga_einf()` — point at infinity (e_∞ = e_- + e_+)
+- `cga_point(coords)` — embed Euclidean point in CGA
+- `cga_sphere(center, radius)` — create sphere from center and radius
+- `cga_plane(normal, distance)` — create plane from normal and distance
+- `cga_circle(center, radius, normal)` — create circle
+- `cga_extract_center()` — extract center from round object
+- `cga_extract_radius()` — extract radius from round object
+- `cga_is_round()` — check if object is round (sphere, circle)
+- `cga_is_flat()` — check if object is flat (plane, line)
+
+**STA Convenience Methods (Spacetime Algebra)**
+- `sta_vector(t, x, y, z)` — create 4-vector (event)
+- `sta_gamma(i)` — get gamma matrix (γ_0, γ_1, γ_2, γ_3)
+- `sta_bivector(components)` — create spacetime bivector
+- `sta_boost(rapidity, direction)` — create Lorentz boost
+- `sta_rotation(angle, plane)` — create spatial rotation
+- `sta_spacetime_split(observer)` — split relative to observer (time, space)
+- `sta_proper_time()` — compute proper time of worldline
+- `sta_is_timelike()` — check if interval is timelike (τ² > 0)
+- `sta_is_spacelike()` — check if interval is spacelike (τ² < 0)
+- `sta_is_lightlike()` — check if interval is lightlike (τ² ≈ 0)
+
+**SIMD Acceleration**
+- Automatic SIMD for algebras with 16+ blades
+- Uses `wide::f64x4` for portable 4-wide operations
+- Falls back to scalar for smaller algebras
+- Accelerates geometric product, additions, scaling
+
+**Batch Operations (NumPy Integration)**
+- `MultivectorBatch` class for vectorized operations
+- `MultivectorBatch.from_numpy(coeffs, algebra)` — create from NumPy array
+- `MultivectorBatch.from_vectors(coords, algebra)` — create from vector coords
+- `MultivectorBatch.from_points_pga(coords)` — create PGA points
+- `to_numpy()` — export to NumPy array
+- Batch geometric product, outer product, inner product
+- Batch sandwich product for transformations
+- Batch norms, normalization, reversal
+- Broadcasting support for scalar operations
+
+**Visualization (ganja.js Integration)**
+- `lcc.viz.show(elements, algebra)` — display in Jupyter notebook
+- `lcc.viz.Graph` class for building visualizations
+- Support for PGA, CGA, and Euclidean algebras
+- Color and label customization
+- IPython HTML rendering
+
 **Constructors**
 - `Multivector.zero(dims)` — zero multivector
 - `Multivector.from_scalar(value, dims)` — scalar multivector
@@ -275,8 +333,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (795 tests)
+- Python test suite (1014 tests)
 - Rust test suite (7 tests)
+- Benchmark suite (Criterion for Rust, vs_competition.py for Python comparisons)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
 - PyPI release workflow with trusted publishing
@@ -285,6 +344,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CONTRIBUTING.md with comment conventions, citation policy, and accessibility guidelines
 
 ### Known Limitations
-- Euclidean metric only (Cl(p,q,r) support planned for v0.2)
 - Runtime dimension checking (compile-time const generics planned for v1.0)
+- ML framework integration (PyTorch/JAX) planned for future release
+- Symbolic computation and code generation planned for future release
 
