@@ -4788,6 +4788,230 @@ impl Multivector {
             None
         }
     }
+
+    /// Compose this rotor with another rotor.
+    ///
+    /// Rotor composition applies rotations in sequence: first self, then other.
+    /// The result R_combined = other * self applies self's rotation first.
+    ///
+    /// # Arguments
+    /// * `other` - The rotor to compose with (applied second)
+    ///
+    /// # Returns
+    /// The composed rotor (normalized)
+    ///
+    /// # Example
+    /// ```python
+    /// R1 = Multivector.from_axis_angle(e3, pi/4)  # 45° around z
+    /// R2 = Multivector.from_axis_angle(e3, pi/4)  # Another 45°
+    /// R_combined = R1.compose_with(R2)  # 90° around z
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn compose_with(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        // Compose: R_combined = other * self (apply self first, then other)
+        let composed = other.geometric_product(self)?;
+        composed.normalized()
+    }
+
+    /// Compute the inverse of this rotor.
+    ///
+    /// For a unit rotor, the inverse is the reverse. This method normalizes
+    /// the result to handle non-unit rotors.
+    ///
+    /// # Returns
+    /// The inverse rotor R⁻¹ such that R * R⁻¹ = 1
+    ///
+    /// # Example
+    /// ```python
+    /// R = Multivector.from_axis_angle(e3, pi/3)
+    /// R_inv = R.inverse_rotor()
+    /// identity = R.compose_with(R_inv)  # Should be 1
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn inverse_rotor(&self) -> PyResult<Self> {
+        // For a unit rotor, inverse = reverse
+        // For non-unit, we need to divide by norm squared
+        let rev = self.reverse();
+        let norm_sq = self.norm_squared();
+        if norm_sq == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot invert zero rotor",
+            ));
+        }
+        Ok(rev.scale(1.0 / norm_sq))
+    }
+
+    /// Compute the rotor that transforms this rotor into another.
+    ///
+    /// Returns R such that other = R * self, i.e., R = other * self⁻¹.
+    ///
+    /// # Arguments
+    /// * `other` - The target rotor
+    ///
+    /// # Returns
+    /// The difference rotor
+    ///
+    /// # Example
+    /// ```python
+    /// R1 = Multivector.from_axis_angle(e3, pi/4)
+    /// R2 = Multivector.from_axis_angle(e3, 3*pi/4)
+    /// R_diff = R1.rotor_difference(R2)  # 90° (pi/2) rotation
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn rotor_difference(&self, other: &Multivector) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let self_inv = self.inverse_rotor()?;
+        let diff = other.geometric_product(&self_inv)?;
+        diff.normalized()
+    }
+
+    /// Create a rotor that rotates one plane (bivector) to another.
+    ///
+    /// Given two bivectors representing planes, compute the rotor that
+    /// transforms the first plane into the second.
+    ///
+    /// # Arguments
+    /// * `plane1` - The source plane (bivector)
+    /// * `plane2` - The target plane (bivector)
+    ///
+    /// # Returns
+    /// The rotor that transforms plane1 to plane2
+    ///
+    /// # Example
+    /// ```python
+    /// xy_plane = Multivector.e12(3)
+    /// xz_plane = Multivector.e31(3)  # Note: e31 = -e13
+    /// R = Multivector.rotor_between_planes(xy_plane, xz_plane)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    #[staticmethod]
+    pub fn rotor_between_planes(plane1: &Multivector, plane2: &Multivector) -> PyResult<Self> {
+        if plane1.dims != plane2.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: plane1 is Cl({}) but plane2 is Cl({})",
+                plane1.dims, plane2.dims
+            )));
+        }
+        // Get the duals (normals) of the planes
+        let n1 = plane1.dual()?.normalized()?;
+        let n2 = plane2.dual()?.normalized()?;
+        // Create rotor from the two normals: R = (1 + n2*n1) / |1 + n2*n1|
+        let one = Multivector::from_scalar(1.0, plane1.dims)?;
+        let n2n1 = n2.geometric_product(&n1)?;
+        let r_unnorm = one.__add__(&n2n1)?;
+        r_unnorm.normalized()
+    }
+
+    /// Normalize this rotor to unit norm.
+    ///
+    /// Rotors should have unit norm for correct rotation behavior.
+    /// This method returns a normalized copy.
+    ///
+    /// # Returns
+    /// A unit rotor
+    ///
+    /// # Example
+    /// ```python
+    /// R = some_rotor
+    /// R_unit = R.normalize_rotor()
+    /// assert abs(R_unit.norm() - 1.0) < 1e-10
+    /// ```
+    pub fn normalize_rotor(&self) -> PyResult<Self> {
+        self.normalized()
+    }
+
+    /// Check if two rotors represent the same rotation.
+    ///
+    /// Rotors R and -R represent the same rotation, so this method
+    /// checks if self ≈ ±other.
+    ///
+    /// # Arguments
+    /// * `other` - The rotor to compare with
+    /// * `tol` - Tolerance for comparison (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the rotors represent the same rotation
+    ///
+    /// # Example
+    /// ```python
+    /// R1 = Multivector.from_axis_angle(e3, pi/2)
+    /// R2 = R1.__neg__()  # -R1
+    /// assert R1.same_rotation(R2)  # True, same rotation
+    /// ```
+    #[pyo3(signature = (other, tol=1e-10))]
+    pub fn same_rotation(&self, other: &Multivector, tol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        // Check if self ≈ other or self ≈ -other
+        let diff1 = self.__sub__(other)?;
+        let diff2 = self.__add__(other)?;
+        Ok(diff1.norm() < tol || diff2.norm() < tol)
+    }
+
+    /// Decompose a 3D rotor into axis and angle.
+    ///
+    /// Returns the rotation axis (unit vector) and angle in radians.
+    /// This is the inverse of from_axis_angle().
+    ///
+    /// # Returns
+    /// A tuple (axis, angle) where axis is a unit vector and angle is in radians
+    ///
+    /// # Example
+    /// ```python
+    /// R = Multivector.from_axis_angle(e3, pi/3)
+    /// axis, angle = R.decompose_rotor()
+    /// # axis ≈ e3, angle ≈ pi/3
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn decompose_rotor(&self) -> PyResult<(Self, f64)> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "decompose_rotor is only implemented for 3D rotors",
+            ));
+        }
+        let angle = self.rotation_angle(1e-10)?;
+        let plane = self.rotation_plane(1e-10)?;
+        // The axis is the dual of the rotation plane
+        let axis = plane.dual()?.normalized()?;
+        Ok((axis, angle))
+    }
+
+    /// Get the rotation angle in degrees.
+    ///
+    /// Convenience method that converts the rotation angle to degrees.
+    ///
+    /// # Returns
+    /// The rotation angle in degrees
+    ///
+    /// # Example
+    /// ```python
+    /// R = Multivector.from_axis_angle(e3, pi/2)
+    /// assert abs(R.rotation_angle_degrees() - 90.0) < 1e-10
+    /// ```
+    pub fn rotation_angle_degrees(&self) -> PyResult<f64> {
+        let radians = self.rotation_angle(1e-10)?;
+        Ok(radians.to_degrees())
+    }
 }
 
 // Rust-only methods (not exposed to Python)
