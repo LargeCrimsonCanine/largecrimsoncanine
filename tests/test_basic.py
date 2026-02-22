@@ -3741,3 +3741,197 @@ def test_blade_indices_zero():
     z = lcc.Multivector.zero(3)
     assert z.blade_indices() == []
 
+
+# =============================================================================
+# PYTHON PROTOCOL TESTS
+# =============================================================================
+
+def test_pow_positive():
+    """Test v ** 2 = v * v."""
+    import largecrimsoncanine as lcc
+    import math
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    result = e1 ** 2
+
+    # e1 * e1 = 1 (Euclidean)
+    assert result.is_scalar()
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_pow_zero():
+    """Test v ** 0 = 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    result = v ** 0
+
+    assert result.is_scalar()
+    assert abs(result.scalar() - 1.0) < 1e-10
+
+
+def test_pow_rotor():
+    """Test rotor ** 2 doubles the rotation."""
+    import largecrimsoncanine as lcc
+    import math
+
+    # e1 and e2 are perpendicular, so rotor_from_vectors gives 90-degree rotation
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # R rotates 90 degrees, so R ** 2 rotates 180 degrees
+    R2 = R ** 2
+
+    # Apply R**2 to e1: should get -e1 (180 degree rotation)
+    rotated = R2.sandwich(e1)
+    neg_e1_coords = [-1.0, 0.0, 0.0]
+    for i, expected in enumerate(neg_e1_coords):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - expected) < 1e-10
+
+
+def test_pow_negative():
+    """Test v ** -1 = v.inverse()."""
+    import largecrimsoncanine as lcc
+
+    # Use a unit vector (easy to invert)
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    result = e1 ** -1
+
+    # e1 ** -1 = e1 (for unit vector)
+    assert result.approx_eq(e1, 1e-10)
+
+
+def test_pow_negative_2():
+    """Test v ** -2 = (v * v).inverse()."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+    result = e1 ** -2
+
+    # (2*e1)^2 = 4, so (2*e1)^-2 = 1/4
+    assert result.is_scalar()
+    assert abs(result.scalar() - 0.25) < 1e-10
+
+
+def test_bool_nonzero():
+    """Non-zero multivector is truthy."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    assert bool(v) is True
+
+
+def test_bool_zero():
+    """Zero multivector is falsy."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert bool(z) is False
+
+
+def test_bool_in_conditional():
+    """Bool works in if statements."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    z = lcc.Multivector.zero(3)
+
+    if v:
+        passed_v = True
+    else:
+        passed_v = False
+
+    if z:
+        passed_z = True
+    else:
+        passed_z = False
+
+    assert passed_v is True
+    assert passed_z is False
+
+
+def test_abs_vector():
+    """abs(v) returns norm."""
+    import largecrimsoncanine as lcc
+    import math
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    assert abs(v) == 5.0
+
+
+def test_abs_scalar():
+    """abs(scalar) returns absolute value."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(-3.0, dims=2)
+    assert abs(s) == 3.0
+
+
+def test_abs_unit_rotor():
+    """abs(unit rotor) is 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert abs(abs(R) - 1.0) < 1e-10
+
+
+def test_copy():
+    """copy() creates independent copy."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = v.copy()
+
+    assert v.approx_eq(v2, 1e-10)
+    # They should be equal but independent objects
+    assert v is not v2
+
+
+def test_copy_preserves_dims():
+    """copy() preserves dimension."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(5)
+    copy = mv.copy()
+
+    assert len(copy) == len(mv)
+
+
+def test_coefficients_returns_all():
+    """coefficients() returns all coefficients."""
+    import largecrimsoncanine as lcc
+
+    # 2D vector (only 2 components)
+    v = lcc.Multivector.from_vector([1.0, 2.0])
+    coeffs = v.coefficients()
+
+    # 2D space has 2^2 = 4 coefficients
+    assert len(coeffs) == 4
+    assert coeffs[0] == 0.0  # scalar
+    assert coeffs[1] == 1.0  # e1
+    assert coeffs[2] == 2.0  # e2
+    assert coeffs[3] == 0.0  # e12
+
+
+def test_coefficients_iterable():
+    """coefficients() is iterable."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    total = sum(v.coefficients())
+
+    assert total == 6.0
+
+
+def test_coefficients_3d():
+    """coefficients() for 3D space has 8 elements."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.zero(3)
+    assert len(v.coefficients()) == 8
+

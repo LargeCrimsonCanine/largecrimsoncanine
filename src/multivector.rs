@@ -873,6 +873,60 @@ impl Multivector {
             .all(|(a, b)| (a - b).abs() <= tol)
     }
 
+    /// Exponentiation operator (**).
+    ///
+    /// For integer exponents:
+    /// - n > 0: repeated geometric product
+    /// - n = 0: returns 1 (scalar)
+    /// - n < 0: repeated inverse (requires invertible multivector)
+    ///
+    /// Useful for computing powers of rotors: R**2 rotates twice as much.
+    pub fn __pow__(&self, exp: i32, _modulo: Option<i32>) -> PyResult<Self> {
+        if exp == 0 {
+            return Self::from_scalar(1.0, self.dims);
+        }
+
+        let (base, n) = if exp < 0 {
+            (self.inverse()?, (-exp) as u32)
+        } else {
+            (self.clone(), exp as u32)
+        };
+
+        // Binary exponentiation
+        let mut result = Self::from_scalar(1.0, self.dims)?;
+        let mut current = base;
+        let mut remaining = n;
+
+        while remaining > 0 {
+            if remaining & 1 == 1 {
+                result = result.geometric_product(&current)?;
+            }
+            remaining >>= 1;
+            if remaining > 0 {
+                current = current.geometric_product(&current)?;
+            }
+        }
+
+        Ok(result)
+    }
+
+    /// Check if multivector is non-zero (truthiness).
+    ///
+    /// Returns True if any coefficient is non-zero.
+    pub fn __bool__(&self) -> bool {
+        self.coeffs.iter().any(|&c| c != 0.0)
+    }
+
+    /// Return the norm (magnitude) via abs().
+    pub fn __abs__(&self) -> f64 {
+        self.norm()
+    }
+
+    /// Create a copy of this multivector.
+    pub fn copy(&self) -> Self {
+        self.clone()
+    }
+
     /// Compute the reverse of this multivector.
     ///
     /// The reverse operation flips the order of basis vectors in each blade.
@@ -1364,6 +1418,15 @@ impl Multivector {
             .filter(|(_, &c)| c != 0.0)
             .map(|(i, &c)| (i, c))
             .collect()
+    }
+
+    /// Return all coefficients as a list.
+    ///
+    /// The list has length 2^n where n is the dimension.
+    /// Index i corresponds to the coefficient of the basis blade
+    /// with binary index i.
+    pub fn coefficients(&self) -> Vec<f64> {
+        self.coeffs.clone()
     }
 
     /// Return the indices of non-zero basis blades.
