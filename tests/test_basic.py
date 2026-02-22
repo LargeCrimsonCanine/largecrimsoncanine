@@ -6004,3 +6004,112 @@ def test_deepcopy_with_memo():
     memo = {}
     mv_copy = copy.deepcopy(mv, memo)
     assert mv_copy.to_list() == mv.to_list()
+
+
+# =====================
+# Numeric protocol tests
+# =====================
+
+
+def test_round_builtin():
+    """round() rounds coefficients to nearest integer."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.4, 2.5, 3.6, 4.4])
+    result = round(mv)
+    # Rust uses "round half away from zero": 2.5 -> 3.0
+    assert result.to_list() == [1.0, 3.0, 4.0, 4.0]
+
+
+def test_round_with_ndigits():
+    """round(mv, n) rounds to n decimal places."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.234, 2.567, 3.891, 4.123])
+    result = round(mv, 2)
+    assert abs(result.to_list()[0] - 1.23) < 1e-10
+    assert abs(result.to_list()[1] - 2.57) < 1e-10
+
+
+def test_round_negative_ndigits():
+    """round(mv, -1) rounds to tens place."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([15.0, 25.0, 35.0, 45.0])
+    result = round(mv, -1)
+    # Rust uses "round half away from zero": 25 -> 30, 35 -> 40, 45 -> 50
+    assert result.to_list() == [20.0, 30.0, 40.0, 50.0]
+
+
+def test_floor():
+    """math.floor() floors all coefficients."""
+    import math
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.9, -1.1, 2.5, -2.5])
+    result = math.floor(mv)
+    assert result.to_list() == [1.0, -2.0, 2.0, -3.0]
+
+
+def test_ceil():
+    """math.ceil() ceils all coefficients."""
+    import math
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.1, -1.9, 2.5, -2.5])
+    result = math.ceil(mv)
+    assert result.to_list() == [2.0, -1.0, 3.0, -2.0]
+
+
+def test_trunc():
+    """math.trunc() truncates all coefficients."""
+    import math
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.9, -1.9, 2.5, -2.5])
+    result = math.trunc(mv)
+    assert result.to_list() == [1.0, -1.0, 2.0, -2.0]
+
+
+def test_float_scalar():
+    """float() works on scalar multivectors."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(3.14, 2)
+    assert abs(float(mv) - 3.14) < 1e-10
+
+
+def test_float_non_scalar_raises():
+    """float() raises ValueError on non-scalar multivectors."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    with pytest.raises(ValueError, match="non-scalar"):
+        float(mv)
+
+
+def test_int_scalar():
+    """int() works on scalar multivectors."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(42.7, 2)
+    assert int(mv) == 42
+
+
+def test_int_non_scalar_raises():
+    """int() raises ValueError on non-scalar multivectors."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    with pytest.raises(ValueError, match="non-scalar"):
+        int(mv)
+
+
+def test_int_negative():
+    """int() truncates toward zero for negative scalars."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_scalar(-3.7, 2)
+    assert int(mv) == -3
