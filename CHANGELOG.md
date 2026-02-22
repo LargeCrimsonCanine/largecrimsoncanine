@@ -97,6 +97,10 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `trivector_part()` — extract grade-3 component
 - `blades()` — decompose into (index, coefficient, grade) tuples
 - `grade_parts()` — dict mapping grade to multivector for each grade
+- `sorted_blades()` — blades sorted by coefficient magnitude (descending)
+- `dominant_grade()` — grade with largest total coefficient magnitude
+- `dominant_blade()` — blade index with largest absolute coefficient
+- `norm_lt(other)`, `norm_gt(other)` — compare multivectors by norm
 - `is_unit()` — check if norm is 1
 - `dot()` — alias for scalar_product
 - `lerp(other, t)` — linear interpolation
@@ -163,7 +167,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (536 tests)
+- Python test suite (548 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
