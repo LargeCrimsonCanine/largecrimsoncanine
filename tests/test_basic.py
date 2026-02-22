@@ -5882,3 +5882,125 @@ def test_nonzero_count_sparse():
 
     mv = lcc.Multivector.from_list([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0])
     assert mv.nonzero_count() == 1
+
+
+# =====================
+# Copy module and hash protocol tests
+# =====================
+
+
+def test_copy_module_copy():
+    """copy.copy() returns a new identical multivector."""
+    import copy
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    mv_copy = copy.copy(mv)
+    assert mv_copy.to_list() == mv.to_list()
+    assert mv_copy is not mv
+
+
+def test_copy_module_deepcopy():
+    """copy.deepcopy() returns a new identical multivector."""
+    import copy
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    mv_copy = copy.deepcopy(mv)
+    assert mv_copy.to_list() == mv.to_list()
+    assert mv_copy is not mv
+
+
+def test_copy_independence():
+    """Copied multivectors are independent."""
+    import copy
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    mv_copy = copy.copy(mv)
+    # Modify original via operation
+    mv2 = mv + lcc.Multivector.from_scalar(1.0, 2)
+    # Copy should be unchanged
+    assert mv_copy.to_list() == [1.0, 2.0, 3.0, 4.0]
+
+
+def test_hash_basic():
+    """Multivectors are hashable."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    h = hash(mv)
+    assert isinstance(h, int)
+
+
+def test_hash_equality():
+    """Equal multivectors have equal hashes."""
+    import largecrimsoncanine as lcc
+
+    mv1 = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    mv2 = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert hash(mv1) == hash(mv2)
+
+
+def test_hash_different():
+    """Different multivectors typically have different hashes."""
+    import largecrimsoncanine as lcc
+
+    mv1 = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    mv2 = lcc.Multivector.from_list([1.0, 2.0, 3.0, 5.0])
+    # Note: hash collision is theoretically possible but unlikely
+    assert hash(mv1) != hash(mv2)
+
+
+def test_hash_dimension_matters():
+    """Multivectors with different dimensions have different hashes."""
+    import largecrimsoncanine as lcc
+
+    mv1 = lcc.Multivector.from_scalar(1.0, 2)  # 4 coeffs
+    mv2 = lcc.Multivector.from_scalar(1.0, 3)  # 8 coeffs
+    assert hash(mv1) != hash(mv2)
+
+
+def test_hash_in_set():
+    """Multivectors can be used in sets."""
+    import largecrimsoncanine as lcc
+
+    mv1 = lcc.Multivector.from_list([1.0, 0.0, 0.0, 0.0])
+    mv2 = lcc.Multivector.from_list([2.0, 0.0, 0.0, 0.0])
+    mv3 = lcc.Multivector.from_list([1.0, 0.0, 0.0, 0.0])  # same as mv1
+
+    s = {mv1, mv2, mv3}
+    assert len(s) == 2  # mv1 and mv3 are equal
+
+
+def test_hash_in_dict():
+    """Multivectors can be used as dictionary keys."""
+    import largecrimsoncanine as lcc
+
+    mv1 = lcc.Multivector.from_list([1.0, 0.0, 0.0, 0.0])
+    mv2 = lcc.Multivector.from_list([2.0, 0.0, 0.0, 0.0])
+
+    d = {mv1: "one", mv2: "two"}
+    assert d[mv1] == "one"
+    assert d[mv2] == "two"
+
+
+def test_hash_stable():
+    """Hash of a multivector is stable across calls."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    h1 = hash(mv)
+    h2 = hash(mv)
+    assert h1 == h2
+
+
+def test_deepcopy_with_memo():
+    """deepcopy works with memo dict for circular reference handling."""
+    import copy
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    memo = {}
+    mv_copy = copy.deepcopy(mv, memo)
+    assert mv_copy.to_list() == mv.to_list()

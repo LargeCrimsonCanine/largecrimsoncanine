@@ -134,13 +134,18 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `~` operator (`__invert__`) — returns reverse
 - `iter()` function (`__iter__`) — iterate over coefficients
 - `copy()` — explicit copy method
+- `copy.copy()` support (`__copy__`) — shallow copy via copy module
+- `copy.deepcopy()` support (`__deepcopy__`) — deep copy via copy module
+- `hash()` function (`__hash__`) — hashable, usable in sets and dict keys
+- `pickle` support (`__reduce__`, `__getstate__`) — serialization
+- `==` operator via `PartialEq` trait — exact equality (frozen pyclass)
 - `coefficients()` — return all coefficients as list
 - `set_coefficient(index, value)` — return copy with coefficient changed
 - `dimension` / `dims` — base vector space dimension (property)
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (402 tests)
+- Python test suite (491 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
