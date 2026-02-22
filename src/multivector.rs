@@ -646,6 +646,11 @@ impl Multivector {
         Multivector::from_scalar(scalar, self.dims)
     }
 
+    /// Alias for scalar_product (dot product notation).
+    pub fn dot(&self, other: &Multivector) -> PyResult<Self> {
+        self.scalar_product(other)
+    }
+
     /// Compute the commutator product of two multivectors.
     ///
     /// The commutator (also called the antisymmetric product) is defined as:
@@ -1306,6 +1311,14 @@ impl Multivector {
         (norm_sq - 1.0).abs() <= tol
     }
 
+    /// Check if this multivector has unit norm.
+    ///
+    /// Returns true if |A| ≈ 1 within tolerance.
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_unit(&self, tol: f64) -> bool {
+        (self.norm() - 1.0).abs() <= tol
+    }
+
     /// Check if this multivector is a blade (simple k-vector).
     ///
     /// A blade is a multivector that can be written as the outer product
@@ -1558,6 +1571,26 @@ impl Multivector {
 
         // Multiply by R1
         self.geometric_product(&exp_scaled)
+    }
+
+    /// Linear interpolation between two multivectors.
+    ///
+    /// Returns (1 - t) * self + t * other.
+    ///
+    /// For t=0 returns self, for t=1 returns other.
+    /// Unlike slerp, this doesn't preserve unit norm for rotors.
+    pub fn lerp(&self, other: &Multivector, t: f64) -> PyResult<Self> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: left operand is Cl({}) but right operand is Cl({}); \
+                both multivectors must have the same dimension",
+                self.dims, other.dims
+            )));
+        }
+
+        let a = self.scale(1.0 - t);
+        let b = other.scale(t);
+        a.__add__(&b)
     }
 
     /// Extract the rotation angle from a rotor.

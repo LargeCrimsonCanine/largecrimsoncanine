@@ -79,6 +79,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `has_grade(k)` — check if grade k has non-zero components
 - `pure_grade()` — return grade if single-grade, None otherwise
 - `is_scalar()`, `is_vector()`, `is_bivector()`, `is_trivector()` — grade checks
+- `is_unit()` — check if norm is 1
+- `dot()` — alias for scalar_product
+- `lerp(other, t)` — linear interpolation
 - `is_pseudoscalar()` — check if highest grade only
 - `is_zero()` — check if all coefficients are zero
 - `components()` — list of (index, coefficient) pairs
@@ -102,7 +105,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (340 tests)
+- Python test suite (350 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
