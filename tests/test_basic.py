@@ -4246,3 +4246,164 @@ def test_lerp_dimension_mismatch():
     with pytest.raises(ValueError, match="dimension mismatch"):
         a.lerp(b, 0.5)
 
+
+# =============================================================================
+# CONVENIENCE METHODS TESTS
+# =============================================================================
+
+def test_magnitude_alias():
+    """magnitude() is alias for norm()."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+
+    assert v.magnitude() == v.norm()
+    assert v.magnitude() == 5.0
+
+
+def test_squared_vector():
+    """Vector squared gives scalar (squared norm)."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    sq = v.squared()
+
+    assert sq.is_scalar()
+    assert sq.scalar() == 25.0  # 3^2 + 4^2
+
+
+def test_squared_bivector():
+    """Bivector squared gives negative scalar."""
+    import largecrimsoncanine as lcc
+
+    # e12 squared = e12 * e12 = e1*e2*e1*e2 = -e1*e1*e2*e2 = -1
+    e12 = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    sq = e12.squared()
+
+    assert sq.is_scalar()
+    assert abs(sq.scalar() - (-1.0)) < 1e-10
+
+
+def test_squared_rotor():
+    """Rotor squared is still a rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    R2 = R.squared()
+
+    # R^2 should still be a unit rotor
+    assert R2.is_rotor()
+
+
+def test_is_even_scalar():
+    """Scalar is even-graded."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.is_even() is True
+    assert s.is_odd() is False
+
+
+def test_is_even_bivector():
+    """Bivector is even-graded."""
+    import largecrimsoncanine as lcc
+
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+    assert B.is_even() is True
+    assert B.is_odd() is False
+
+
+def test_is_odd_vector():
+    """Vector is odd-graded."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.is_odd() is True
+    assert v.is_even() is False
+
+
+def test_is_even_rotor():
+    """Rotor (scalar + bivector) is even-graded."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.is_even() is True
+    assert R.is_odd() is False
+
+
+def test_is_even_mixed():
+    """Mixed scalar + vector is neither even nor odd."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(1.0, dims=2)
+    v = lcc.Multivector.from_vector([1.0, 0.0])
+    mixed = s + v
+
+    assert mixed.is_even() is False
+    assert mixed.is_odd() is False
+
+
+def test_is_even_zero():
+    """Zero is both even and odd (vacuously true)."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+
+    # Zero has no components, so all conditions are vacuously satisfied
+    assert z.is_even() is True
+    assert z.is_odd() is True
+
+
+def test_grade_count_zero():
+    """Zero has 0 grades."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(3)
+    assert z.grade_count() == 0
+
+
+def test_grade_count_scalar():
+    """Scalar has 1 grade."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert s.grade_count() == 1
+
+
+def test_grade_count_vector():
+    """Vector has 1 grade."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.grade_count() == 1
+
+
+def test_grade_count_rotor():
+    """Rotor has 2 grades (scalar + bivector)."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert R.grade_count() == 2
+
+
+def test_grade_count_general():
+    """General multivector can have multiple grades."""
+    import largecrimsoncanine as lcc
+
+    # scalar + vector + bivector
+    s = lcc.Multivector.from_scalar(1.0, dims=3)
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    mv = s + v + B
+
+    assert mv.grade_count() == 3
+
