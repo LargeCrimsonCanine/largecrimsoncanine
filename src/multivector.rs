@@ -5012,6 +5012,267 @@ impl Multivector {
         let radians = self.rotation_angle(1e-10)?;
         Ok(radians.to_degrees())
     }
+
+    /// Check if two multivectors are close using numpy-style tolerances.
+    ///
+    /// Uses the formula: |a - b| <= atol + rtol * |b|
+    /// This checks if all coefficients satisfy this condition.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to compare with
+    /// * `rtol` - Relative tolerance (default 1e-5)
+    /// * `atol` - Absolute tolerance (default 1e-8)
+    ///
+    /// # Returns
+    /// True if all coefficients are close
+    ///
+    /// # Example
+    /// ```python
+    /// a = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// b = Multivector.from_vector([1.0 + 1e-10, 2.0, 3.0])
+    /// assert a.allclose(b)
+    /// ```
+    #[pyo3(signature = (other, rtol=1e-5, atol=1e-8))]
+    pub fn allclose(&self, other: &Multivector, rtol: f64, atol: f64) -> PyResult<bool> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        for (a, b) in self.coeffs.iter().zip(other.coeffs.iter()) {
+            if (a - b).abs() > atol + rtol * b.abs() {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    /// Check if this multivector is approximately zero.
+    ///
+    /// # Arguments
+    /// * `tol` - Tolerance for zero check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if all coefficients have absolute value less than tol
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1e-15, 1e-15, 1e-15])
+    /// assert v.almost_zero()
+    /// ```
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn almost_zero(&self, tol: f64) -> bool {
+        self.coeffs.iter().all(|c| c.abs() < tol)
+    }
+
+    /// Compute the maximum absolute difference between coefficients.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to compare with
+    ///
+    /// # Returns
+    /// The maximum |self[i] - other[i]| across all coefficients
+    ///
+    /// # Example
+    /// ```python
+    /// a = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// b = Multivector.from_vector([1.1, 2.0, 3.2])
+    /// diff = a.max_abs_diff(b)  # Returns 0.2
+    /// ```
+    pub fn max_abs_diff(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let max_diff = self
+            .coeffs
+            .iter()
+            .zip(other.coeffs.iter())
+            .map(|(a, b)| (a - b).abs())
+            .fold(0.0_f64, |acc, x| acc.max(x));
+        Ok(max_diff)
+    }
+
+    /// Compute the relative error between two multivectors.
+    ///
+    /// Returns ||self - other|| / ||self||.
+    /// If self has zero norm, returns the absolute error instead.
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to compare with
+    ///
+    /// # Returns
+    /// The relative error (dimensionless)
+    ///
+    /// # Example
+    /// ```python
+    /// a = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// b = Multivector.from_vector([1.01, 0.0, 0.0])
+    /// error = a.relative_error(b)  # Returns ~0.01
+    /// ```
+    pub fn relative_error(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let diff = self.__sub__(other)?;
+        let diff_norm = diff.norm();
+        let self_norm = self.norm();
+        if self_norm == 0.0 {
+            Ok(diff_norm)
+        } else {
+            Ok(diff_norm / self_norm)
+        }
+    }
+
+    /// Check if this multivector has unit norm.
+    ///
+    /// # Arguments
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if |norm - 1| < tol
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// assert v.is_normalized()
+    ///
+    /// v2 = Multivector.from_vector([2.0, 0.0, 0.0])
+    /// assert not v2.is_normalized()
+    /// ```
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_normalized(&self, tol: f64) -> bool {
+        (self.norm() - 1.0).abs() < tol
+    }
+
+    /// Snap small coefficients to exactly zero.
+    ///
+    /// Like clean(), but returns a new multivector with small values
+    /// set to exactly 0.0.
+    ///
+    /// # Arguments
+    /// * `tol` - Threshold below which coefficients become zero (default 1e-10)
+    ///
+    /// # Returns
+    /// A new multivector with small coefficients zeroed
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 1e-15, 1e-15])
+    /// snapped = v.snap_to_zero()
+    /// # snapped ≈ [1.0, 0.0, 0.0]
+    /// ```
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn snap_to_zero(&self, tol: f64) -> Self {
+        self.clean(tol)
+    }
+
+    /// Compute the Frobenius-style distance between two multivectors.
+    ///
+    /// This is the Euclidean distance in coefficient space: sqrt(sum((a_i - b_i)²)).
+    ///
+    /// # Arguments
+    /// * `other` - The multivector to compare with
+    ///
+    /// # Returns
+    /// The coefficient-space distance
+    ///
+    /// # Example
+    /// ```python
+    /// a = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// b = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// dist = a.coefficient_distance(b)  # sqrt(2)
+    /// ```
+    pub fn coefficient_distance(&self, other: &Multivector) -> PyResult<f64> {
+        if self.dims != other.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: self is Cl({}) but other is Cl({})",
+                self.dims, other.dims
+            )));
+        }
+        let sum_sq: f64 = self
+            .coeffs
+            .iter()
+            .zip(other.coeffs.iter())
+            .map(|(a, b)| (a - b).powi(2))
+            .sum();
+        Ok(sum_sq.sqrt())
+    }
+
+    /// Check if this multivector is close to being a pure blade.
+    ///
+    /// A blade is a simple k-vector (outer product of k vectors).
+    /// This method checks if the multivector is approximately a blade
+    /// by verifying that A ∧ A ≈ 0 (a blade wedged with itself is zero).
+    ///
+    /// # Arguments
+    /// * `tol` - Tolerance for the check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if approximately a blade
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// assert v.is_simple_blade()  # Vectors are always blades
+    ///
+    /// # Sum of non-parallel bivectors is NOT a blade
+    /// b = Multivector.e12(3) + Multivector.e23(3)
+    /// assert not b.is_simple_blade()
+    /// ```
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_simple_blade(&self, tol: f64) -> PyResult<bool> {
+        // For a simple blade, A ∧ A = 0
+        let self_wedge_self = self.wedge(self)?;
+        Ok(self_wedge_self.norm() < tol)
+    }
+
+    /// Get the dominant coefficient value (largest absolute value).
+    ///
+    /// # Returns
+    /// The coefficient with the largest absolute value
+    ///
+    /// # Example
+    /// ```python
+    /// mv = Multivector.from_list([1.0, -5.0, 2.0, 0.0, 3.0, 0.0, 0.0, 0.0])
+    /// assert mv.dominant_coefficient() == -5.0
+    /// ```
+    pub fn dominant_coefficient(&self) -> f64 {
+        self.coeffs
+            .iter()
+            .max_by(|a, b| a.abs().partial_cmp(&b.abs()).unwrap())
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    /// Scale the multivector so the dominant coefficient equals 1.
+    ///
+    /// Useful for normalizing blades to a canonical form.
+    ///
+    /// # Returns
+    /// A scaled multivector with dominant coefficient = 1
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([4.0, 0.0, 0.0])
+    /// scaled = v.normalize_dominant()
+    /// # scaled = [1.0, 0.0, 0.0]
+    /// ```
+    pub fn normalize_dominant(&self) -> PyResult<Self> {
+        let dom = self.dominant_coefficient();
+        if dom == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot normalize: all coefficients are zero",
+            ));
+        }
+        Ok(self.scale(1.0 / dom))
+    }
 }
 
 // Rust-only methods (not exposed to Python)
