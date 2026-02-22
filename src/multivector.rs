@@ -1,4 +1,6 @@
-use crate::algebra;
+use std::sync::Arc;
+use crate::algebra::{self, Algebra, get_euclidean};
+use crate::pyalgebra::PyAlgebra;
 use pyo3::prelude::*;
 
 /// A multivector in the Clifford algebra Cl(n).
@@ -23,7 +25,30 @@ pub struct Multivector {
     pub coeffs: Vec<f64>,
 
     /// Dimension of the base vector space.
+    /// Kept for backward compatibility - will be removed in Phase 4.
     pub dims: usize,
+
+    /// Optional algebra for metric-aware operations.
+    /// If None, uses default Euclidean algebra.
+    algebra_opt: Option<Arc<Algebra>>,
+}
+
+impl Multivector {
+    /// Get the algebra for this multivector.
+    /// Returns the explicit algebra if set, otherwise creates/gets Euclidean default.
+    pub fn get_algebra(&self) -> Arc<Algebra> {
+        self.algebra_opt.clone().unwrap_or_else(|| get_euclidean(self.dims))
+    }
+
+    /// Check if two multivectors are in compatible algebras.
+    pub fn same_algebra(&self, other: &Multivector) -> bool {
+        match (&self.algebra_opt, &other.algebra_opt) {
+            (Some(a), Some(b)) => Arc::ptr_eq(a, b) || a.signature == b.signature,
+            (None, None) => self.dims == other.dims,
+            (Some(a), None) => a.signature.is_euclidean() && a.signature.dimension() == other.dims,
+            (None, Some(b)) => b.signature.is_euclidean() && b.signature.dimension() == self.dims,
+        }
+    }
 }
 
 impl PartialEq for Multivector {
@@ -96,7 +121,7 @@ impl Multivector {
         }
         // len is guaranteed to be a power of 2, so trailing_zeros gives log2
         let dims = len.trailing_zeros() as usize;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Return the scalar (grade-0) part of this multivector.
@@ -262,6 +287,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: vec![0.0; size],
             dims,
+            algebra_opt: None,
         })
     }
 
@@ -281,7 +307,7 @@ impl Multivector {
         let size = 1usize << dims;
         let mut coeffs = vec![0.0; size];
         coeffs[0] = value;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create a multivector from a list of coefficients.
@@ -322,7 +348,7 @@ impl Multivector {
         }
         // Compute dims: len = 2^dims, so dims = log2(len)
         let dims = len.trailing_zeros() as usize;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create a vector (grade-1) multivector from coordinates.
@@ -347,7 +373,7 @@ impl Multivector {
         for (i, &c) in coords.iter().enumerate() {
             coeffs[1 << i] = c;
         }
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create a single basis vector e_i (1-indexed).
@@ -375,7 +401,7 @@ impl Multivector {
         let mut coeffs = vec![0.0; size];
         // e_i has coefficient index 2^(i-1) (e1=1, e2=2, e3=4, ...)
         coeffs[1 << (index - 1)] = 1.0;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create the unit pseudoscalar (highest grade element) for the given dimension.
@@ -397,7 +423,148 @@ impl Multivector {
         let mut coeffs = vec![0.0; size];
         // Pseudoscalar has all bits set: index = 2^n - 1
         coeffs[size - 1] = 1.0;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
+    }
+
+    // ========================================================================
+    // Algebra-aware constructors
+    // ========================================================================
+
+    /// Create a zero multivector in the given algebra.
+    ///
+    /// This is the preferred way to create multivectors when working with
+    /// non-Euclidean algebras like PGA, CGA, or STA.
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// zero = Multivector.zero_in(pga3d)
+    /// ```
+    #[staticmethod]
+    pub fn zero_in(algebra: &PyAlgebra) -> Self {
+        let size = algebra.inner.num_blades();
+        Multivector {
+            coeffs: vec![0.0; size],
+            dims: algebra.inner.dimension(),
+            algebra_opt: Some(algebra.inner.clone()),
+        }
+    }
+
+    /// Create a scalar multivector in the given algebra.
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// s = Multivector.scalar_in(2.5, pga3d)
+    /// ```
+    #[staticmethod]
+    pub fn scalar_in(value: f64, algebra: &PyAlgebra) -> Self {
+        let size = algebra.inner.num_blades();
+        let mut coeffs = vec![0.0; size];
+        coeffs[0] = value;
+        Multivector {
+            coeffs,
+            dims: algebra.inner.dimension(),
+            algebra_opt: Some(algebra.inner.clone()),
+        }
+    }
+
+    /// Create a vector in the given algebra from coordinates.
+    ///
+    /// The coordinates correspond to the vector components [e1, e2, ...].
+    /// The length of coords must match the algebra dimension.
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// v = Multivector.vector_in([1.0, 2.0, 3.0, 0.0], pga3d)
+    /// ```
+    #[staticmethod]
+    pub fn vector_in(coords: Vec<f64>, algebra: &PyAlgebra) -> PyResult<Self> {
+        let dim = algebra.inner.dimension();
+        if coords.len() != dim {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "coords length {} doesn't match algebra dimension {}",
+                coords.len(), dim
+            )));
+        }
+        let size = algebra.inner.num_blades();
+        let mut coeffs = vec![0.0; size];
+        for (i, &c) in coords.iter().enumerate() {
+            coeffs[1 << i] = c;
+        }
+        Ok(Multivector {
+            coeffs,
+            dims: dim,
+            algebra_opt: Some(algebra.inner.clone()),
+        })
+    }
+
+    /// Create a basis vector in the given algebra.
+    ///
+    /// Index is 1-based (e1 is index 1, e2 is index 2, etc.)
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// e1 = Multivector.basis_in(1, pga3d)
+    /// e0 = Multivector.basis_in(4, pga3d)  # degenerate basis in PGA
+    /// ```
+    #[staticmethod]
+    pub fn basis_in(index: usize, algebra: &PyAlgebra) -> PyResult<Self> {
+        let dim = algebra.inner.dimension();
+        if index == 0 || index > dim {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "basis index {} out of range for {}-dimensional algebra (use 1 to {})",
+                index, dim, dim
+            )));
+        }
+        let size = algebra.inner.num_blades();
+        let mut coeffs = vec![0.0; size];
+        coeffs[1 << (index - 1)] = 1.0;
+        Ok(Multivector {
+            coeffs,
+            dims: dim,
+            algebra_opt: Some(algebra.inner.clone()),
+        })
+    }
+
+    /// Create the pseudoscalar in the given algebra.
+    ///
+    /// The pseudoscalar is the highest-grade element (all basis vectors wedged).
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// I = Multivector.pseudoscalar_in(pga3d)  # e0123 in PGA3D
+    /// ```
+    #[staticmethod]
+    pub fn pseudoscalar_in(algebra: &PyAlgebra) -> Self {
+        let size = algebra.inner.num_blades();
+        let mut coeffs = vec![0.0; size];
+        coeffs[size - 1] = 1.0;
+        Multivector {
+            coeffs,
+            dims: algebra.inner.dimension(),
+            algebra_opt: Some(algebra.inner.clone()),
+        }
+    }
+
+    /// Get the algebra of this multivector, if explicitly set.
+    ///
+    /// Returns None for multivectors created without an explicit algebra.
+    ///
+    /// Example:
+    /// ```python
+    /// pga3d = Algebra.pga(3)
+    /// v = Multivector.zero_in(pga3d)
+    /// alg = v.algebra()  # Returns the PGA3D algebra
+    ///
+    /// v2 = Multivector.zero(3)  # Created without explicit algebra
+    /// alg2 = v2.algebra()  # Returns None
+    /// ```
+    pub fn algebra(&self) -> Option<PyAlgebra> {
+        self.algebra_opt.as_ref().map(|a| PyAlgebra { inner: a.clone() })
     }
 
     /// Create the unit vector e1 (first basis vector).
@@ -493,7 +660,7 @@ impl Multivector {
         let size = 1usize << dims;
         let mut coeffs = vec![0.0; size];
         coeffs[3] = 1.0;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create the unit basis bivector e23 = e2 ∧ e3 in Cl(n).
@@ -517,7 +684,7 @@ impl Multivector {
         let size = 1usize << dims;
         let mut coeffs = vec![0.0; size];
         coeffs[6] = 1.0;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create the unit basis bivector e31 = e3 ∧ e1 in Cl(n).
@@ -543,7 +710,7 @@ impl Multivector {
         let size = 1usize << dims;
         let mut coeffs = vec![0.0; size];
         coeffs[5] = -1.0;
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create the unit pseudoscalar e123 = e1 ∧ e2 ∧ e3 in 3D.
@@ -566,7 +733,7 @@ impl Multivector {
         // e123 has index 7 (binary 111)
         let mut coeffs = vec![0.0; 8];
         coeffs[7] = 1.0;
-        Ok(Multivector { coeffs, dims: 3 })
+        Ok(Multivector { coeffs, dims: 3, algebra_opt: None })
     }
 
     /// Create a random multivector with coefficients in [0, 1).
@@ -598,7 +765,7 @@ impl Multivector {
                 (state as f64) / (u64::MAX as f64)
             })
             .collect();
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Create a random unit vector.
@@ -676,7 +843,7 @@ impl Multivector {
             }
         }
 
-        let bivector = Multivector { coeffs, dims };
+        let bivector = Multivector { coeffs, dims, algebra_opt: None };
         bivector.exp()
     }
 
@@ -812,7 +979,7 @@ impl Multivector {
         coeffs[5] = sin_half * ay; // e13
         coeffs[6] = -sin_half * ax; // e23
 
-        Ok(Multivector { coeffs, dims: 3 })
+        Ok(Multivector { coeffs, dims: 3, algebra_opt: None })
     }
 
     /// Create a 3D rotor from quaternion components (w, x, y, z).
@@ -836,7 +1003,7 @@ impl Multivector {
         coeffs[5] = -y; // e13 (from -y*j)
         coeffs[6] = -x; // e23 (from -x*i)
 
-        Multivector { coeffs, dims: 3 }
+        Multivector { coeffs, dims: 3, algebra_opt: None }
     }
 
     /// Convert this 3D rotor to quaternion components (w, x, y, z).
@@ -1070,7 +1237,7 @@ impl Multivector {
                 comp_idx += 1;
             }
         }
-        Ok(Multivector { coeffs, dims })
+        Ok(Multivector { coeffs, dims, algebra_opt: None })
     }
 
     /// Project onto a specific grade.
@@ -1098,6 +1265,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1121,6 +1289,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1156,6 +1325,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1197,6 +1367,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1217,6 +1388,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -1234,6 +1406,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -1255,6 +1428,7 @@ impl Multivector {
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -1264,7 +1438,7 @@ impl Multivector {
                 if b == 0.0 {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 result[blade] += sign * a * b;
             }
         }
@@ -1272,6 +1446,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1299,6 +1474,7 @@ impl Multivector {
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -1312,7 +1488,7 @@ impl Multivector {
                 if i & j != 0 {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 result[blade] += sign * a * b;
             }
         }
@@ -1320,6 +1496,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1349,6 +1526,7 @@ impl Multivector {
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -1368,7 +1546,7 @@ impl Multivector {
                 if (i & j) != i {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 let result_grade = algebra::blade_grade(blade);
                 // Only keep the grade (s-r) component
                 if result_grade == grade_b - grade_a {
@@ -1380,6 +1558,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1414,6 +1593,7 @@ impl Multivector {
         }
         let size = self.coeffs.len();
         let mut result = vec![0.0f64; size];
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -1433,7 +1613,7 @@ impl Multivector {
                 if (i & j) != j {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 let result_grade = algebra::blade_grade(blade);
                 // Only keep the grade (r-s) component
                 if result_grade == grade_a - grade_b {
@@ -1445,6 +1625,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs: result,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1474,6 +1655,7 @@ impl Multivector {
         }
 
         let mut scalar = 0.0f64;
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -1483,7 +1665,7 @@ impl Multivector {
                 if b == 0.0 {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 // Only accumulate scalar part (blade index 0)
                 if blade == 0 {
                     scalar += sign * a * b;
@@ -1879,6 +2061,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1902,6 +2085,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -1911,6 +2095,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -1933,6 +2118,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2045,6 +2231,7 @@ impl Multivector {
         Ok(Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         })
     }
 
@@ -2068,6 +2255,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2092,6 +2280,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2108,6 +2297,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2128,6 +2318,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2160,6 +2351,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2182,6 +2374,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2210,6 +2403,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2229,6 +2423,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2250,6 +2445,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2271,6 +2467,7 @@ impl Multivector {
                 Multivector {
                     coeffs,
                     dims: self.dims,
+                    algebra_opt: None,
                 }
             }
         }
@@ -2284,6 +2481,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2295,6 +2493,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2306,6 +2505,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2411,7 +2611,7 @@ impl Multivector {
                 )));
             }
 
-            Ok(Multivector { coeffs, dims })
+            Ok(Multivector { coeffs, dims, algebra_opt: None })
         })
     }
 
@@ -2484,6 +2684,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2520,6 +2721,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2560,6 +2762,7 @@ impl Multivector {
         Multivector {
             coeffs,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2585,6 +2788,7 @@ impl Multivector {
         Multivector {
             coeffs: sum,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2603,6 +2807,7 @@ impl Multivector {
         Multivector {
             coeffs: sum,
             dims: self.dims,
+            algebra_opt: None,
         }
     }
 
@@ -2649,6 +2854,7 @@ impl Multivector {
         // Compute A * ~A and extract scalar part
         let rev = self.reverse();
         let mut scalar = 0.0f64;
+        let alg = self.get_algebra();
 
         for (i, &a) in self.coeffs.iter().enumerate() {
             if a == 0.0 {
@@ -2658,7 +2864,7 @@ impl Multivector {
                 if b == 0.0 {
                     continue;
                 }
-                let (blade, sign) = algebra::blade_product(i, j);
+                let (blade, sign) = alg.product(i, j);
                 // Only accumulate scalar part (blade index 0)
                 if blade == 0 {
                     scalar += sign * a * b;

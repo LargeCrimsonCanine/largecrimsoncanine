@@ -1,3 +1,10 @@
+//! Legacy algebra module - kept for reference and tests.
+//!
+//! This module contains the original Euclidean-only algebra functions.
+//! New code should use the `algebra` module which supports Cl(p,q,r) signatures.
+
+#![allow(dead_code)]
+
 /// Returns the grade of a basis blade given its binary index.
 ///
 /// The grade equals the number of set bits (popcount) in the index.

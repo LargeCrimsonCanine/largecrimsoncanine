@@ -34,6 +34,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Scalar extraction (`scalar()`)
 - Blade grade and product primitives in `algebra.rs`
 
+**Algebra System (Cl(p,q,r) Support)**
+- `Algebra` class for working with arbitrary Clifford algebras
+- `Signature` struct for metric signatures (p positive, q negative, r degenerate)
+- Pre-computed Cayley tables for O(1) product lookup
+- `Algebra.euclidean(n)` — Euclidean algebra Cl(n,0,0)
+- `Algebra.pga(n)` — Projective Geometric Algebra Cl(n,0,1)
+- `Algebra.cga(n)` — Conformal Geometric Algebra Cl(n+1,1,0)
+- `Algebra.sta()` — Spacetime Algebra Cl(1,3,0)
+- `Algebra(p, q, r)` — arbitrary signature Cl(p,q,r)
+- `algebra.dimension` — vector space dimension
+- `algebra.num_blades` — total basis blades (2^dim)
+- `algebra.p`, `algebra.q`, `algebra.r` — signature components
+- `algebra.is_euclidean()`, `algebra.is_pga()` — signature checks
+- `algebra.blade_name(index)` — human-readable blade names
+- Algebra equality and hashing for use in collections
+- Thread-safe algebra caching via `Arc<Algebra>`
+
+**Algebra-Aware Constructors**
+- `Multivector.zero_in(algebra)` — zero multivector in algebra
+- `Multivector.scalar_in(value, algebra)` — scalar in algebra
+- `Multivector.vector_in(coords, algebra)` — vector in algebra
+- `Multivector.basis_in(index, algebra)` — basis vector in algebra
+- `Multivector.pseudoscalar_in(algebra)` — pseudoscalar in algebra
+- `multivector.algebra()` — get algebra if explicitly set
+
 **Constructors**
 - `Multivector.zero(dims)` — zero multivector
 - `Multivector.from_scalar(value, dims)` — scalar multivector
