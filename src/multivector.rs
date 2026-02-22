@@ -1952,6 +1952,128 @@ impl Multivector {
         }
     }
 
+    /// Keep only coefficients from specified grades.
+    ///
+    /// Returns a new multivector with only the specified grades retained.
+    /// Other grades are set to zero.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = 1 + e1 + e2 + e12  # mixed grades 0, 1, 2
+    /// mv.filter_grades([1])  # keeps only e1 + e2
+    /// mv.filter_grades([0, 2])  # keeps 1 + e12
+    /// ```
+    pub fn filter_grades(&self, grades: Vec<usize>) -> Self {
+        let grade_set: std::collections::HashSet<usize> = grades.into_iter().collect();
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| {
+                let grade = i.count_ones() as usize;
+                if grade_set.contains(&grade) {
+                    c
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Apply a threshold: zero out coefficients with absolute value below threshold.
+    ///
+    /// Similar to `clean()` but returns a new multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([0.001, 1.0, 0.0001, 2.0])
+    /// mv.threshold(0.01)  # zeroes the small values
+    /// ```
+    #[pyo3(signature = (min_abs = 1e-10))]
+    pub fn threshold(&self, min_abs: f64) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| if c.abs() < min_abs { 0.0 } else { c })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Return the sign of each coefficient (-1, 0, or 1).
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([-2.0, 0.0, 3.0, -0.5])
+    /// signs = mv.sign()
+    /// signs.to_list()  # [-1.0, 0.0, 1.0, -1.0]
+    /// ```
+    pub fn sign(&self) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| {
+                if c > 0.0 {
+                    1.0
+                } else if c < 0.0 {
+                    -1.0
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Return multivector with only positive coefficients (negative set to zero).
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
+    /// mv.positive_part().to_list()  # [0.0, 2.0, 0.0, 4.0]
+    /// ```
+    pub fn positive_part(&self) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| if c > 0.0 { c } else { 0.0 })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Return multivector with only negative coefficients (positive set to zero).
+    ///
+    /// Note: the coefficients remain negative in the result.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([-1.0, 2.0, -3.0, 4.0])
+    /// mv.negative_part().to_list()  # [-1.0, 0.0, -3.0, 0.0]
+    /// ```
+    pub fn negative_part(&self) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| if c < 0.0 { c } else { 0.0 })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
     /// Return the norm (magnitude) via abs().
     pub fn __abs__(&self) -> f64 {
         self.norm()

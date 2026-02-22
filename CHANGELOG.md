@@ -128,6 +128,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `clean(epsilon)` — set near-zero coefficients to zero
 - `abs_coefficients()` — absolute value of all coefficients
 - `clamp_coefficients(min, max)` — clamp coefficients to range
+- `filter_grades(grades)` — keep only specified grades
+- `threshold(min_abs)` — zero out coefficients below threshold
+- `sign()` — return sign of each coefficient (-1, 0, or 1)
+- `positive_part()` — keep only positive coefficients
+- `negative_part()` — keep only negative coefficients
 
 **Serialization**
 - `to_dict()` — serialize to dictionary (coeffs, dims)
@@ -167,7 +172,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (548 tests)
+- Python test suite (558 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
