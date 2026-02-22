@@ -458,6 +458,77 @@ impl Multivector {
         Ok(Self::from_quaternion(w, x, y, z))
     }
 
+    /// Create a 3D rotor from Euler angles (intrinsic ZYX convention).
+    ///
+    /// This is the common "yaw-pitch-roll" convention:
+    /// - yaw: rotation around Z axis (in radians)
+    /// - pitch: rotation around Y axis (in radians)
+    /// - roll: rotation around X axis (in radians)
+    ///
+    /// The rotations are applied in order: first roll (X), then pitch (Y), then yaw (Z).
+    /// This matches the convention used in aerospace and robotics.
+    #[staticmethod]
+    pub fn from_euler_angles(yaw: f64, pitch: f64, roll: f64) -> Self {
+        // Half angles
+        let cy = (yaw / 2.0).cos();
+        let sy = (yaw / 2.0).sin();
+        let cp = (pitch / 2.0).cos();
+        let sp = (pitch / 2.0).sin();
+        let cr = (roll / 2.0).cos();
+        let sr = (roll / 2.0).sin();
+
+        // Quaternion from Euler angles (ZYX intrinsic = XYZ extrinsic)
+        let w = cr * cp * cy + sr * sp * sy;
+        let x = sr * cp * cy - cr * sp * sy;
+        let y = cr * sp * cy + sr * cp * sy;
+        let z = cr * cp * sy - sr * sp * cy;
+
+        Self::from_quaternion(w, x, y, z)
+    }
+
+    /// Convert this 3D rotor to Euler angles (intrinsic ZYX convention).
+    ///
+    /// Returns (yaw, pitch, roll) in radians, where:
+    /// - yaw: rotation around Z axis
+    /// - pitch: rotation around Y axis
+    /// - roll: rotation around X axis
+    ///
+    /// Warning: Gimbal lock occurs when pitch = ±π/2. In this case,
+    /// yaw and roll become coupled and the decomposition is not unique.
+    ///
+    /// Raises ValueError if not a 3D multivector.
+    pub fn to_euler_angles(&self) -> PyResult<(f64, f64, f64)> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "to_euler_angles requires 3D multivector, got Cl({})",
+                self.dims
+            )));
+        }
+
+        let (w, x, y, z) = self.to_quaternion()?;
+
+        // Roll (x-axis rotation)
+        let sinr_cosp = 2.0 * (w * x + y * z);
+        let cosr_cosp = 1.0 - 2.0 * (x * x + y * y);
+        let roll = sinr_cosp.atan2(cosr_cosp);
+
+        // Pitch (y-axis rotation)
+        let sinp = 2.0 * (w * y - z * x);
+        let pitch = if sinp.abs() >= 1.0 {
+            // Gimbal lock
+            std::f64::consts::FRAC_PI_2.copysign(sinp)
+        } else {
+            sinp.asin()
+        };
+
+        // Yaw (z-axis rotation)
+        let siny_cosp = 2.0 * (w * z + x * y);
+        let cosy_cosp = 1.0 - 2.0 * (y * y + z * z);
+        let yaw = siny_cosp.atan2(cosy_cosp);
+
+        Ok((yaw, pitch, roll))
+    }
+
     /// Create a bivector (grade-2) from components.
     ///
     /// For 2D: provide [e12_coeff]
