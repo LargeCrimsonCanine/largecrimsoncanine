@@ -73,6 +73,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_rotor()` — check if unit rotor
 - `exp()` — exponential (bivector → rotor)
 - `log()` — logarithm (rotor → bivector)
+- `sqrt()` — square root of rotor (half the rotation angle)
+- `powf(t)` — raise rotor to float power (fractional rotations)
 - `slerp(other, t)` — spherical linear interpolation between rotors
 - `rotation_angle()` — extract rotation angle from rotor
 - `rotation_plane()` — extract rotation plane (bivector) from rotor
@@ -193,7 +195,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (631 tests)
+- Python test suite (641 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
