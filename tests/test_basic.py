@@ -6356,3 +6356,133 @@ def test_random_rotor_requires_dims_2():
 
     with pytest.raises(ValueError, match="dimension >= 2"):
         lcc.Multivector.random_rotor(1)
+
+
+# =====================
+# Blade decomposition tests
+# =====================
+
+
+def test_vector_part():
+    """vector_part() extracts grade-1 component."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])  # scalar + vector + bivector
+    v = mv.vector_part()
+    assert v.is_vector() or v.is_zero()
+    assert v.to_list()[1] == 2.0
+    assert v.to_list()[2] == 3.0
+    assert v.to_list()[0] == 0.0  # no scalar
+
+
+def test_bivector_part():
+    """bivector_part() extracts grade-2 component."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])  # scalar + vector + bivector
+    B = mv.bivector_part()
+    assert B.is_bivector() or B.is_zero()
+    assert B.to_list()[3] == 4.0
+    assert B.to_list()[0] == 0.0  # no scalar
+    assert B.to_list()[1] == 0.0  # no vector
+
+
+def test_trivector_part():
+    """trivector_part() extracts grade-3 component."""
+    import largecrimsoncanine as lcc
+
+    # Create multivector with all grades in 3D
+    coeffs = [0.0] * 8
+    coeffs[0] = 1.0  # scalar
+    coeffs[1] = 2.0  # e1
+    coeffs[3] = 3.0  # e12
+    coeffs[7] = 4.0  # e123 (trivector)
+    mv = lcc.Multivector.from_list(coeffs)
+    T = mv.trivector_part()
+    assert T.is_trivector() or T.is_zero()
+    assert T.to_list()[7] == 4.0
+
+
+def test_vector_part_of_vector():
+    """vector_part() of vector returns the vector."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    v2 = v.vector_part()
+    assert v2.to_list() == v.to_list()
+
+
+def test_blades_returns_components():
+    """blades() returns list of (index, coeff, grade) tuples."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 0.0, 3.0])
+    blades = mv.blades()
+    assert len(blades) == 3
+    # Check contents - should be (0, 1.0, 0), (1, 2.0, 1), (3, 3.0, 2)
+    indices = [b[0] for b in blades]
+    assert 0 in indices
+    assert 1 in indices
+    assert 3 in indices
+
+
+def test_blades_empty_for_zero():
+    """blades() of zero multivector returns empty list."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    blades = mv.blades()
+    assert blades == []
+
+
+def test_blades_grade_correct():
+    """blades() reports correct grade for each blade."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [0.0] * 8
+    coeffs[0] = 1.0  # grade 0
+    coeffs[1] = 1.0  # grade 1
+    coeffs[3] = 1.0  # grade 2 (e12)
+    coeffs[7] = 1.0  # grade 3 (e123)
+    mv = lcc.Multivector.from_list(coeffs)
+    blades = mv.blades()
+    grades = {b[0]: b[2] for b in blades}
+    assert grades[0] == 0
+    assert grades[1] == 1
+    assert grades[3] == 2
+    assert grades[7] == 3
+
+
+def test_grade_parts_returns_dict():
+    """grade_parts() returns dict mapping grade to multivector."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    parts = mv.grade_parts()
+    assert isinstance(parts, dict)
+    assert 0 in parts
+    assert 1 in parts
+    assert 2 in parts
+
+
+def test_grade_parts_sum():
+    """Sum of grade_parts equals original."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    parts = mv.grade_parts()
+    reconstructed = lcc.Multivector.zero(2)
+    for part in parts.values():
+        reconstructed = reconstructed + part
+    assert reconstructed.approx_eq(mv)
+
+
+def test_grade_parts_empty_grades_not_included():
+    """grade_parts() doesn't include grades with zero components."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0])  # only grade 1
+    parts = v.grade_parts()
+    assert 1 in parts
+    assert 0 not in parts
+    assert 2 not in parts

@@ -104,6 +104,82 @@ impl Multivector {
         self.coeffs[0]
     }
 
+    /// Return the vector (grade-1) part of this multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = some_multivector
+    /// v = mv.vector_part()  # grade-1 projection
+    /// ```
+    pub fn vector_part(&self) -> Self {
+        self.grade(1).unwrap_or_else(|_| self.clone())
+    }
+
+    /// Return the bivector (grade-2) part of this multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = some_multivector
+    /// B = mv.bivector_part()  # grade-2 projection
+    /// ```
+    pub fn bivector_part(&self) -> Self {
+        self.grade(2).unwrap_or_else(|_| self.clone())
+    }
+
+    /// Return the trivector (grade-3) part of this multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = some_multivector
+    /// T = mv.trivector_part()  # grade-3 projection
+    /// ```
+    pub fn trivector_part(&self) -> Self {
+        self.grade(3).unwrap_or_else(|_| self.clone())
+    }
+
+    /// Decompose this multivector into individual blade components.
+    ///
+    /// Returns a list of (index, coefficient, grade) tuples for each
+    /// non-zero blade.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    /// blades = mv.blades()
+    /// # [(0, 1.0, 0), (1, 2.0, 1), (2, 3.0, 1), (3, 4.0, 2)]
+    /// ```
+    pub fn blades(&self) -> Vec<(usize, f64, usize)> {
+        self.coeffs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                if c != 0.0 {
+                    Some((i, c, i.count_ones() as usize))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Return a dictionary mapping grade -> multivector for each non-zero grade part.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = e1 + e2 + e12
+    /// parts = mv.grade_parts()
+    /// # {1: <vector part>, 2: <bivector part>}
+    /// ```
+    pub fn grade_parts(&self) -> std::collections::HashMap<usize, Multivector> {
+        let mut parts = std::collections::HashMap::new();
+        for g in self.grades() {
+            if let Ok(part) = self.grade(g) {
+                parts.insert(g, part);
+            }
+        }
+        parts
+    }
+
     // =========================================================================
     // CONSTRUCTORS (static methods)
     // =========================================================================
