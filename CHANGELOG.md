@@ -139,13 +139,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `hash()` function (`__hash__`) — hashable, usable in sets and dict keys
 - `pickle` support (`__reduce__`, `__getstate__`) — serialization
 - `==` operator via `PartialEq` trait — exact equality (frozen pyclass)
+- `round()` function (`__round__`) — round coefficients to n decimal places
+- `math.floor()` (`__floor__`) — floor all coefficients
+- `math.ceil()` (`__ceil__`) — ceil all coefficients
+- `math.trunc()` (`__trunc__`) — truncate all coefficients
+- `float()` function (`__float__`) — convert scalar multivector to float
+- `int()` function (`__int__`) — convert scalar multivector to int
 - `coefficients()` — return all coefficients as list
 - `set_coefficient(index, value)` — return copy with coefficient changed
 - `dimension` / `dims` — base vector space dimension (property)
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (491 tests)
+- Python test suite (502 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

@@ -1595,6 +1595,83 @@ impl Multivector {
         self.norm()
     }
 
+    /// Round all coefficients to ndigits decimal places.
+    ///
+    /// Implements Python's round() builtin.
+    #[pyo3(signature = (ndigits=None))]
+    pub fn __round__(&self, ndigits: Option<i32>) -> Self {
+        match ndigits {
+            Some(n) => self.round_coefficients(n),
+            None => {
+                // Round to nearest integer
+                let coeffs: Vec<f64> = self.coeffs.iter().map(|&c| c.round()).collect();
+                Multivector {
+                    coeffs,
+                    dims: self.dims,
+                }
+            }
+        }
+    }
+
+    /// Floor all coefficients (round toward negative infinity).
+    ///
+    /// Implements math.floor() for multivectors.
+    pub fn __floor__(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter().map(|&c| c.floor()).collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Ceil all coefficients (round toward positive infinity).
+    ///
+    /// Implements math.ceil() for multivectors.
+    pub fn __ceil__(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter().map(|&c| c.ceil()).collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Truncate all coefficients (round toward zero).
+    ///
+    /// Implements math.trunc() for multivectors.
+    pub fn __trunc__(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter().map(|&c| c.trunc()).collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Convert to float if this is a scalar multivector.
+    ///
+    /// Raises ValueError if the multivector has non-scalar components.
+    pub fn __float__(&self) -> PyResult<f64> {
+        if self.is_scalar() {
+            Ok(self.coeffs[0])
+        } else {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot convert non-scalar multivector to float",
+            ))
+        }
+    }
+
+    /// Convert to int if this is a scalar multivector.
+    ///
+    /// Raises ValueError if the multivector has non-scalar components.
+    pub fn __int__(&self) -> PyResult<i64> {
+        if self.is_scalar() {
+            Ok(self.coeffs[0] as i64)
+        } else {
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "cannot convert non-scalar multivector to int",
+            ))
+        }
+    }
+
     /// Create a copy of this multivector.
     pub fn copy(&self) -> Self {
         self.clone()
