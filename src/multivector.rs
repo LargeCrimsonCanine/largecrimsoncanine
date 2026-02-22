@@ -259,6 +259,63 @@ impl Multivector {
         }
     }
 
+    /// Create a 3D rotor from an axis vector and rotation angle.
+    ///
+    /// The axis is a 3D vector that defines the rotation axis.
+    /// The angle is in radians, with positive values rotating counter-clockwise
+    /// when looking along the axis (right-hand rule).
+    ///
+    /// Formula: R = cos(θ/2) + sin(θ/2) * (axis normalized as bivector)
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    #[staticmethod]
+    pub fn from_axis_angle(axis: PyRef<'_, Multivector>, angle: f64) -> PyResult<Self> {
+        if axis.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "from_axis_angle requires 3D vectors, got Cl({})",
+                axis.dims
+            )));
+        }
+
+        // Check axis is a vector
+        let axis_grade = axis.pure_grade();
+        if axis_grade != Some(1) {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "axis must be a vector (grade 1)",
+            ));
+        }
+
+        // Normalize the axis
+        let axis_unit = axis.normalize().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("axis has zero norm; cannot create rotor")
+        })?;
+
+        // Get axis components
+        let ax = axis_unit.coeffs[1]; // e1 component
+        let ay = axis_unit.coeffs[2]; // e2 component
+        let az = axis_unit.coeffs[4]; // e3 component
+
+        // The bivector representing the rotation plane is the negative dual of the axis.
+        // This follows the right-hand rule: positive angle rotates counterclockwise
+        // when looking along the axis direction.
+        //
+        // For unit axis (ax, ay, az), the bivector is:
+        // B = -ax*e23 + ay*e13 - az*e12
+        let half_angle = angle / 2.0;
+        let cos_half = half_angle.cos();
+        let sin_half = half_angle.sin();
+
+        // R = cos(θ/2) + sin(θ/2) * B
+        // Coefficients: [scalar, e1, e2, e12, e3, e13, e23, e123]
+        let mut coeffs = vec![0.0; 8];
+        coeffs[0] = cos_half; // scalar
+        coeffs[3] = -sin_half * az; // e12
+        coeffs[5] = sin_half * ay; // e13
+        coeffs[6] = -sin_half * ax; // e23
+
+        Ok(Multivector { coeffs, dims: 3 })
+    }
+
     /// Create a bivector (grade-2) from components.
     ///
     /// For 2D: provide [e12_coeff]
@@ -714,6 +771,26 @@ impl Multivector {
 
     /// Return the number of coefficients.
     pub fn __len__(&self) -> usize {
+        self.coeffs.len()
+    }
+
+    /// Return the dimension of the base vector space.
+    ///
+    /// For Cl(n), this returns n. The multivector has 2^n coefficients.
+    #[getter]
+    pub fn dimension(&self) -> usize {
+        self.dims
+    }
+
+    /// Alias for dimension.
+    #[getter]
+    pub fn dims(&self) -> usize {
+        self.dims
+    }
+
+    /// Return the number of coefficients (2^dimension).
+    #[getter]
+    pub fn n_coeffs(&self) -> usize {
         self.coeffs.len()
     }
 

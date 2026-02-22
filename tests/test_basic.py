@@ -3935,3 +3935,186 @@ def test_coefficients_3d():
     v = lcc.Multivector.zero(3)
     assert len(v.coefficients()) == 8
 
+
+# =============================================================================
+# DIMENSION ACCESS TESTS
+# =============================================================================
+
+def test_dimension_property():
+    """dimension property returns base vector space dimension."""
+    import largecrimsoncanine as lcc
+
+    v2 = lcc.Multivector.zero(2)
+    v3 = lcc.Multivector.zero(3)
+    v4 = lcc.Multivector.zero(4)
+
+    assert v2.dimension == 2
+    assert v3.dimension == 3
+    assert v4.dimension == 4
+
+
+def test_dims_property():
+    """dims property is alias for dimension."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.dims == 3
+    assert v.dims == v.dimension
+
+
+def test_n_coeffs_property():
+    """n_coeffs returns 2^dimension."""
+    import largecrimsoncanine as lcc
+
+    v2 = lcc.Multivector.zero(2)
+    v3 = lcc.Multivector.zero(3)
+    v4 = lcc.Multivector.zero(4)
+
+    assert v2.n_coeffs == 4   # 2^2
+    assert v3.n_coeffs == 8   # 2^3
+    assert v4.n_coeffs == 16  # 2^4
+
+
+def test_dimension_equals_len_log():
+    """n_coeffs equals len()."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0, 4.0, 5.0])
+
+    assert len(v) == v.n_coeffs
+
+
+# =============================================================================
+# FROM_AXIS_ANGLE TESTS
+# =============================================================================
+
+def test_from_axis_angle_identity():
+    """Zero angle gives identity rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])  # z-axis
+    R = lcc.Multivector.from_axis_angle(axis, 0.0)
+
+    # Identity rotor is 1 + 0*B
+    assert abs(R.scalar() - 1.0) < 1e-10
+    # Should be just a scalar
+    for i in range(1, 8):
+        assert abs(R.to_list()[i]) < 1e-10
+
+
+def test_from_axis_angle_90_degrees():
+    """90-degree rotation around z-axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])  # z-axis
+    R = lcc.Multivector.from_axis_angle(axis, math.pi / 2)
+
+    # Apply to e1, should get e2
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    expected = [0.0, 1.0, 0.0]  # e2
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_axis_angle_180_degrees():
+    """180-degree rotation around z-axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+    R = lcc.Multivector.from_axis_angle(axis, math.pi)
+
+    # Apply to e1, should get -e1
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(e1)
+
+    expected = [-1.0, 0.0, 0.0]  # -e1
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_axis_angle_x_axis():
+    """Rotation around x-axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 0.0, 0.0])  # x-axis
+    R = lcc.Multivector.from_axis_angle(axis, math.pi / 2)
+
+    # Apply to e2, should get e3
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    rotated = R.sandwich(e2)
+
+    expected = [0.0, 0.0, 1.0]  # e3
+    for i, exp in enumerate(expected):
+        actual = rotated.to_list()[1 << i]
+        assert abs(actual - exp) < 1e-10
+
+
+def test_from_axis_angle_arbitrary_axis():
+    """Rotation around arbitrary axis preserves axis."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 1.0, 1.0])
+    R = lcc.Multivector.from_axis_angle(axis, math.pi / 3)
+
+    # Axis should be unchanged by rotation around itself
+    rotated = R.sandwich(axis.normalized())
+
+    assert rotated.approx_eq(axis.normalized(), 1e-10)
+
+
+def test_from_axis_angle_unit_rotor():
+    """from_axis_angle produces unit rotor."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    R = lcc.Multivector.from_axis_angle(axis, 1.234)
+
+    # Unit rotor: R * ~R = 1
+    product = R * R.reverse()
+    assert abs(product.scalar() - 1.0) < 1e-10
+
+
+def test_from_axis_angle_matches_rotation_angle():
+    """rotation_angle extracts the correct angle."""
+    import largecrimsoncanine as lcc
+    import math
+
+    axis = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+    angle = 1.5  # radians
+    R = lcc.Multivector.from_axis_angle(axis, angle)
+
+    extracted = R.rotation_angle()
+    assert abs(extracted - angle) < 1e-10
+
+
+def test_from_axis_angle_requires_3d():
+    """from_axis_angle raises error for non-3D."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    axis_2d = lcc.Multivector.from_vector([1.0, 0.0])
+    with pytest.raises(ValueError, match="requires 3D"):
+        lcc.Multivector.from_axis_angle(axis_2d, 1.0)
+
+
+def test_from_axis_angle_requires_vector():
+    """from_axis_angle raises error for non-vector."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    # Bivector, not vector
+    B = lcc.Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    with pytest.raises(ValueError, match="must be a vector"):
+        lcc.Multivector.from_axis_angle(B, 1.0)
+
