@@ -4583,6 +4583,211 @@ impl Multivector {
         let proj = self.project(plane)?;
         Ok(proj.norm() < tol)
     }
+
+    /// Extract the highest-grade component of the multivector.
+    ///
+    /// Returns the multivector containing only the coefficients of the highest
+    /// non-zero grade.
+    ///
+    /// # Returns
+    /// The highest-grade part of the multivector, or zero if all coefficients are zero
+    ///
+    /// # Example
+    /// ```python
+    /// mv = Multivector.from_scalar(1.0, 3) + Multivector.e1(3) + Multivector.e12(3)
+    /// highest = mv.max_grade_part()  # Returns the bivector part (e12)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn max_grade_part(&self) -> PyResult<Self> {
+        match self.max_grade() {
+            Some(k) => self.grade(k),
+            None => Ok(Self::zero(self.dims)?),
+        }
+    }
+
+    /// Extract the lowest-grade component of the multivector.
+    ///
+    /// Returns the multivector containing only the coefficients of the lowest
+    /// non-zero grade.
+    ///
+    /// # Returns
+    /// The lowest-grade part of the multivector, or zero if all coefficients are zero
+    ///
+    /// # Example
+    /// ```python
+    /// mv = Multivector.from_scalar(1.0, 3) + Multivector.e1(3) + Multivector.e12(3)
+    /// lowest = mv.min_grade_part()  # Returns the scalar part
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn min_grade_part(&self) -> PyResult<Self> {
+        match self.min_grade() {
+            Some(k) => self.grade(k),
+            None => Ok(Self::zero(self.dims)?),
+        }
+    }
+
+    /// Split the multivector into its even and odd parts.
+    ///
+    /// Returns a tuple of (even_part, odd_part).
+    ///
+    /// # Returns
+    /// A tuple (even, odd) where even contains grades 0, 2, 4, ... and odd contains grades 1, 3, 5, ...
+    ///
+    /// # Example
+    /// ```python
+    /// rotor = Multivector.from_axis_angle(e3, 0.5)
+    /// even, odd = rotor.split_even_odd()  # rotor is even, odd should be zero
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn split_even_odd(&self) -> (Self, Self) {
+        (self.even(), self.odd())
+    }
+
+    /// Compute the square of this multivector.
+    ///
+    /// For blades in Euclidean space, this always returns a scalar.
+    /// For general multivectors, this returns a full multivector.
+    ///
+    /// # Returns
+    /// The geometric product of this multivector with itself
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// assert e1.blade_square() == 1.0  # Unit vector squares to 1
+    ///
+    /// e12 = Multivector.e12(3)
+    /// assert e12.blade_square() == -1.0  # Bivector squares to -1
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    pub fn blade_square(&self) -> PyResult<f64> {
+        let sq = self.geometric_product(self)?;
+        // For a blade, the result should be a scalar
+        Ok(sq.scalar())
+    }
+
+    /// Check if this blade is null (squares to zero).
+    ///
+    /// In Euclidean space, no non-zero blade is null. This is useful for
+    /// checking degenerate cases or for mixed-signature algebras.
+    ///
+    /// # Arguments
+    /// * `tol` - Tolerance for the zero check (default 1e-10)
+    ///
+    /// # Returns
+    /// True if the blade squares to approximately zero
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 0, 0])
+    /// assert not v.is_null()  # Non-zero vectors are not null in Euclidean space
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.2 [VERIFY]
+    #[pyo3(signature = (tol=1e-10))]
+    pub fn is_null(&self, tol: f64) -> PyResult<bool> {
+        let sq = self.blade_square()?;
+        Ok(sq.abs() < tol)
+    }
+
+    /// Compute the complement of this multivector.
+    ///
+    /// The complement is the dual multiplied by the pseudoscalar, effectively
+    /// mapping grade-k elements to grade-(n-k) elements.
+    ///
+    /// For a multivector A in Cl(n), complement(A) = A * I where I is the pseudoscalar.
+    ///
+    /// # Returns
+    /// The complement of the multivector
+    ///
+    /// # Example
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// comp = e1.complement()  # Returns e2 ∧ e3 (a bivector)
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn complement(&self) -> PyResult<Self> {
+        let pseudoscalar = Self::pseudoscalar(self.dims)?;
+        self.geometric_product(&pseudoscalar)
+    }
+
+    /// Compute the reverse complement (undual operation).
+    ///
+    /// The reverse complement maps a multivector by multiplying by the inverse pseudoscalar.
+    ///
+    /// # Returns
+    /// The reverse complement of the multivector
+    ///
+    /// # Example
+    /// ```python
+    /// e23 = Multivector.e23(3)
+    /// rev_comp = e23.reverse_complement()  # Returns e1
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn reverse_complement(&self) -> PyResult<Self> {
+        let pseudoscalar = Self::pseudoscalar(self.dims)?;
+        let pseudoscalar_inv = pseudoscalar.inverse()?;
+        self.geometric_product(&pseudoscalar_inv)
+    }
+
+    /// Get the number of distinct non-zero grades in this multivector.
+    ///
+    /// # Returns
+    /// The count of grades with non-zero coefficients
+    ///
+    /// # Example
+    /// ```python
+    /// mv = Multivector.from_scalar(1.0, 3) + Multivector.e1(3)
+    /// assert mv.grade_count() == 2  # Has scalar and vector parts
+    /// ```
+    pub fn num_grades(&self) -> usize {
+        self.grades().len()
+    }
+
+    /// Check if this multivector has exactly one non-zero grade.
+    ///
+    /// # Returns
+    /// True if the multivector is a pure k-vector (blade or sum of k-blades)
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 2, 3])
+    /// assert v.is_homogeneous()  # True, only grade 1
+    ///
+    /// rotor = Multivector.rotor_from_vectors(e1, e2)
+    /// assert not rotor.is_homogeneous()  # False, has scalar and bivector parts
+    /// ```
+    pub fn is_homogeneous(&self) -> bool {
+        self.grades().len() <= 1
+    }
+
+    /// Get the grade of this multivector if it has exactly one non-zero grade.
+    ///
+    /// # Returns
+    /// Some(k) if the multivector has only grade-k components, None otherwise
+    ///
+    /// # Example
+    /// ```python
+    /// v = Multivector.from_vector([1, 2, 3])
+    /// assert v.homogeneous_grade() == 1
+    ///
+    /// rotor = Multivector.rotor_from_vectors(e1, e2)
+    /// assert rotor.homogeneous_grade() is None
+    /// ```
+    pub fn homogeneous_grade(&self) -> Option<usize> {
+        let grades = self.grades();
+        if grades.len() == 1 {
+            Some(grades[0])
+        } else {
+            None
+        }
+    }
 }
 
 // Rust-only methods (not exposed to Python)

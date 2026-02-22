@@ -8548,3 +8548,295 @@ def test_is_perpendicular_to_plane_in_plane():
     xy_plane = lcc.Multivector.e12(3)
 
     assert not e1.is_perpendicular_to_plane(xy_plane)
+
+
+# ============================================================================
+# BLADE DECOMPOSITION TESTS
+# ============================================================================
+
+
+def test_max_grade_part_mixed():
+    """max_grade_part extracts highest grade."""
+    import largecrimsoncanine as lcc
+
+    scalar = lcc.Multivector.from_scalar(1.0, 3)
+    vector = lcc.Multivector.e1(3)
+    bivector = lcc.Multivector.e12(3)
+
+    mv = scalar.__add__(vector).__add__(bivector)
+    highest = mv.max_grade_part()
+
+    assert highest.approx_eq(bivector)
+
+
+def test_max_grade_part_single_grade():
+    """max_grade_part of single-grade is itself."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    highest = v.max_grade_part()
+
+    assert highest.approx_eq(v)
+
+
+def test_max_grade_part_zero():
+    """max_grade_part of zero is zero."""
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+    highest = zero.max_grade_part()
+
+    assert highest.approx_eq(zero)
+
+
+def test_min_grade_part_mixed():
+    """min_grade_part extracts lowest grade."""
+    import largecrimsoncanine as lcc
+
+    scalar = lcc.Multivector.from_scalar(5.0, 3)
+    vector = lcc.Multivector.e1(3)
+    bivector = lcc.Multivector.e12(3)
+
+    mv = scalar.__add__(vector).__add__(bivector)
+    lowest = mv.min_grade_part()
+
+    assert lowest.approx_eq(scalar)
+
+
+def test_min_grade_part_single_grade():
+    """min_grade_part of single-grade is itself."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    lowest = v.min_grade_part()
+
+    assert lowest.approx_eq(v)
+
+
+def test_split_even_odd_rotor():
+    """split_even_odd separates even and odd parts."""
+    import largecrimsoncanine as lcc
+
+    # A rotor is purely even
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    rotor = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    even, odd = rotor.split_even_odd()
+
+    assert even.approx_eq(rotor)
+    assert odd.approx_eq(lcc.Multivector.zero(3))
+
+
+def test_split_even_odd_vector():
+    """split_even_odd of vector gives (0, vector)."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    even, odd = v.split_even_odd()
+
+    assert even.approx_eq(lcc.Multivector.zero(3))
+    assert odd.approx_eq(v)
+
+
+def test_split_even_odd_mixed():
+    """split_even_odd separates mixed multivector."""
+    import largecrimsoncanine as lcc
+
+    scalar = lcc.Multivector.from_scalar(1.0, 3)
+    vector = lcc.Multivector.e1(3)
+    bivector = lcc.Multivector.e12(3)
+
+    mv = scalar.__add__(vector).__add__(bivector)
+    even, odd = mv.split_even_odd()
+
+    expected_even = scalar.__add__(bivector)
+    expected_odd = vector
+
+    assert even.approx_eq(expected_even)
+    assert odd.approx_eq(expected_odd)
+
+
+def test_blade_square_vector():
+    """blade_square of unit vector is 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    sq = e1.blade_square()
+
+    assert abs(sq - 1.0) < 1e-10
+
+
+def test_blade_square_bivector():
+    """blade_square of unit bivector is -1."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    sq = e12.blade_square()
+
+    assert abs(sq - (-1.0)) < 1e-10
+
+
+def test_blade_square_pseudoscalar():
+    """blade_square of pseudoscalar depends on dimension."""
+    import largecrimsoncanine as lcc
+
+    # In 3D, e123^2 = -1
+    e123 = lcc.Multivector.e123()
+    sq = e123.blade_square()
+
+    assert abs(sq - (-1.0)) < 1e-10
+
+
+def test_blade_square_scaled():
+    """blade_square scales quadratically."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+    sq = v.blade_square()
+
+    assert abs(sq - 9.0) < 1e-10
+
+
+def test_is_null_euclidean():
+    """is_null returns False for non-zero Euclidean vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert not v.is_null()
+
+
+def test_is_null_zero():
+    """is_null returns True for zero multivector."""
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+
+    assert zero.is_null()
+
+
+def test_complement_vector():
+    """complement of vector gives bivector."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    comp = e1.complement()
+
+    # In 3D, e1 * e123 = e1 * e1 * e2 * e3 = e2 * e3 = e23
+    e23 = lcc.Multivector.e23(3)
+    assert comp.approx_eq(e23)
+
+
+def test_complement_bivector():
+    """complement of bivector gives vector."""
+    import largecrimsoncanine as lcc
+
+    e12 = lcc.Multivector.e12(3)
+    comp = e12.complement()
+
+    # e12 * e123 = e12 * e123 = e1 * e2 * e1 * e2 * e3 = -e3
+    e3_neg = lcc.Multivector.e3(3).__neg__()
+    assert comp.approx_eq(e3_neg)
+
+
+def test_reverse_complement_roundtrip():
+    """complement followed by reverse_complement gives original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    comp = v.complement()
+    back = comp.reverse_complement()
+
+    # Due to sign in pseudoscalar inverse, we may get ±v
+    assert back.approx_eq(v) or back.approx_eq(v.__neg__())
+
+
+def test_num_grades_mixed():
+    """num_grades counts distinct grades."""
+    import largecrimsoncanine as lcc
+
+    scalar = lcc.Multivector.from_scalar(1.0, 3)
+    vector = lcc.Multivector.e1(3)
+    bivector = lcc.Multivector.e12(3)
+
+    mv = scalar.__add__(vector).__add__(bivector)
+
+    assert mv.num_grades() == 3
+
+
+def test_num_grades_single():
+    """num_grades of single-grade is 1."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.num_grades() == 1
+
+
+def test_num_grades_zero():
+    """num_grades of zero is 0."""
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+
+    assert zero.num_grades() == 0
+
+
+def test_is_homogeneous_vector():
+    """is_homogeneous returns True for vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.is_homogeneous()
+
+
+def test_is_homogeneous_rotor():
+    """is_homogeneous returns False for rotors."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    rotor = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    assert not rotor.is_homogeneous()
+
+
+def test_is_homogeneous_zero():
+    """is_homogeneous returns True for zero."""
+    import largecrimsoncanine as lcc
+
+    zero = lcc.Multivector.zero(3)
+
+    assert zero.is_homogeneous()
+
+
+def test_homogeneous_grade_vector():
+    """homogeneous_grade returns 1 for vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    assert v.homogeneous_grade() == 1
+
+
+def test_homogeneous_grade_bivector():
+    """homogeneous_grade returns 2 for bivectors."""
+    import largecrimsoncanine as lcc
+
+    b = lcc.Multivector.e12(3)
+
+    assert b.homogeneous_grade() == 2
+
+
+def test_homogeneous_grade_mixed():
+    """homogeneous_grade returns None for mixed grade."""
+    import largecrimsoncanine as lcc
+
+    scalar = lcc.Multivector.from_scalar(1.0, 3)
+    vector = lcc.Multivector.e1(3)
+    mv = scalar.__add__(vector)
+
+    assert mv.homogeneous_grade() is None

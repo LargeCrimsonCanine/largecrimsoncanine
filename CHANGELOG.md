@@ -106,6 +106,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `distance_to_plane(plane, point_on_plane)` — perpendicular distance to plane
 - `lies_in_plane(plane)` — check if vector lies in a plane
 - `is_perpendicular_to_plane(plane)` — check if vector is perpendicular to plane
+- `max_grade_part()` — extract highest-grade component
+- `min_grade_part()` — extract lowest-grade component
+- `split_even_odd()` — return (even_part, odd_part) tuple
+- `blade_square()` — compute scalar square of a blade
+- `is_null()` — check if blade squares to zero
+- `complement()` — multiply by pseudoscalar (grade complement)
+- `reverse_complement()` — multiply by inverse pseudoscalar
+- `num_grades()` — count distinct non-zero grades
+- `is_homogeneous()` — check if single-grade
+- `homogeneous_grade()` — return grade if single-grade, None otherwise
 - `triple_product(b, c)` — scalar triple product a·(b×c) in 3D
 - `unit()` — return unit (normalized) multivector (alias for normalized)
 
@@ -211,7 +221,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (703 tests)
+- Python test suite (729 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
