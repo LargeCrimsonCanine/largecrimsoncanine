@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use crate::algebra::{self, Algebra, get_euclidean};
 use crate::pyalgebra::PyAlgebra;
+use crate::simd::{should_use_simd, simd_geometric_product};
 use pyo3::prelude::*;
 
 /// A multivector in a Clifford algebra Cl(p,q,r).
@@ -1446,16 +1447,29 @@ impl Multivector {
         let mut result = vec![0.0f64; size];
         let alg = self.get_algebra();
 
-        for (i, &a) in self.coeffs.iter().enumerate() {
-            if a == 0.0 {
-                continue;
-            }
-            for (j, &b) in other.coeffs.iter().enumerate() {
-                if b == 0.0 {
+        // Use SIMD for larger algebras (16+ blades)
+        if should_use_simd(size) {
+            simd_geometric_product(
+                &mut result,
+                &self.coeffs,
+                &other.coeffs,
+                alg.cayley_blades(),
+                alg.cayley_signs(),
+                size,
+            );
+        } else {
+            // Scalar path for smaller algebras
+            for (i, &a) in self.coeffs.iter().enumerate() {
+                if a == 0.0 {
                     continue;
                 }
-                let (blade, sign) = alg.product(i, j);
-                result[blade] += sign * a * b;
+                for (j, &b) in other.coeffs.iter().enumerate() {
+                    if b == 0.0 {
+                        continue;
+                    }
+                    let (blade, sign) = alg.product(i, j);
+                    result[blade] += sign * a * b;
+                }
             }
         }
 

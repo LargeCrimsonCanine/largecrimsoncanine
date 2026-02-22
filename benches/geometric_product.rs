@@ -11,6 +11,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use largecrimsoncanine::algebra::Algebra;
 use largecrimsoncanine::Multivector;
+use largecrimsoncanine::simd::{simd_geometric_product, should_use_simd};
 
 // =============================================================================
 // Helper functions for creating test multivectors
@@ -525,6 +526,175 @@ fn bench_reverse(c: &mut Criterion) {
 }
 
 // =============================================================================
+// SIMD vs Scalar Benchmarks
+// =============================================================================
+
+/// Scalar implementation of geometric product for comparison.
+fn scalar_geometric_product(
+    result: &mut [f64],
+    a_coeffs: &[f64],
+    b_coeffs: &[f64],
+    cayley_blades: &[usize],
+    cayley_signs: &[f64],
+    num_blades: usize,
+) {
+    for (i, &a) in a_coeffs.iter().enumerate() {
+        if a == 0.0 {
+            continue;
+        }
+        let row_offset = i * num_blades;
+        for (j, &b) in b_coeffs.iter().enumerate() {
+            if b == 0.0 {
+                continue;
+            }
+            let idx = row_offset + j;
+            let blade = cayley_blades[idx];
+            let sign = cayley_signs[idx];
+            result[blade] += sign * a * b;
+        }
+    }
+}
+
+fn bench_gp_simd_vs_scalar(c: &mut Criterion) {
+    let mut group = c.benchmark_group("gp_simd_vs_scalar");
+
+    // Test algebras where SIMD should help: R4 (16 blades), CGA3D (32 blades), R6 (64 blades)
+    for dims in [4, 5, 6] {
+        let algebra = Algebra::euclidean(dims);
+        let num_blades = 1 << dims;
+
+        // Create dense test multivectors
+        let a_coeffs: Vec<f64> = (0..num_blades)
+            .map(|i| ((i * 2654435761) as f64 % 100.0) / 50.0 - 1.0)
+            .collect();
+        let b_coeffs: Vec<f64> = (0..num_blades)
+            .map(|i| ((i * 1597334677) as f64 % 100.0) / 50.0 - 1.0)
+            .collect();
+
+        let cayley_blades = algebra.cayley_blades();
+        let cayley_signs = algebra.cayley_signs();
+
+        let name = match dims {
+            4 => "R4",
+            5 => "CGA3D",
+            6 => "R6",
+            _ => "Unknown",
+        };
+
+        // Benchmark SIMD version
+        group.bench_with_input(
+            BenchmarkId::new(format!("{}/simd", name), num_blades),
+            &(&a_coeffs, &b_coeffs, cayley_blades, cayley_signs, num_blades),
+            |bench, (a, b, blades, signs, n)| {
+                bench.iter(|| {
+                    let mut result = vec![0.0f64; *n];
+                    simd_geometric_product(&mut result, a, b, blades, signs, *n);
+                    black_box(result)
+                });
+            },
+        );
+
+        // Benchmark scalar version
+        group.bench_with_input(
+            BenchmarkId::new(format!("{}/scalar", name), num_blades),
+            &(&a_coeffs, &b_coeffs, cayley_blades, cayley_signs, num_blades),
+            |bench, (a, b, blades, signs, n)| {
+                bench.iter(|| {
+                    let mut result = vec![0.0f64; *n];
+                    scalar_geometric_product(&mut result, a, b, blades, signs, *n);
+                    black_box(result)
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+fn bench_gp_simd_dense_vs_sparse(c: &mut Criterion) {
+    let mut group = c.benchmark_group("gp_simd_density");
+
+    let dims = 5;  // CGA3D
+    let algebra = Algebra::euclidean(dims);
+    let num_blades = 1 << dims;
+
+    let cayley_blades = algebra.cayley_blades();
+    let cayley_signs = algebra.cayley_signs();
+
+    // Dense multivector (all coefficients non-zero)
+    let dense: Vec<f64> = (0..num_blades)
+        .map(|i| ((i * 2654435761) as f64 % 100.0) / 50.0 - 1.0)
+        .collect();
+
+    // Sparse multivector (only vectors, ~5 non-zero out of 32)
+    let mut sparse = vec![0.0f64; num_blades];
+    for i in 0..dims {
+        sparse[1 << i] = 1.0 + i as f64;
+    }
+
+    // Dense x Dense
+    group.bench_function("CGA3D/dense_x_dense", |bench| {
+        bench.iter(|| {
+            let mut result = vec![0.0f64; num_blades];
+            simd_geometric_product(&mut result, &dense, &dense, cayley_blades, cayley_signs, num_blades);
+            black_box(result)
+        });
+    });
+
+    // Dense x Sparse
+    group.bench_function("CGA3D/dense_x_sparse", |bench| {
+        bench.iter(|| {
+            let mut result = vec![0.0f64; num_blades];
+            simd_geometric_product(&mut result, &dense, &sparse, cayley_blades, cayley_signs, num_blades);
+            black_box(result)
+        });
+    });
+
+    // Sparse x Sparse
+    group.bench_function("CGA3D/sparse_x_sparse", |bench| {
+        bench.iter(|| {
+            let mut result = vec![0.0f64; num_blades];
+            simd_geometric_product(&mut result, &sparse, &sparse, cayley_blades, cayley_signs, num_blades);
+            black_box(result)
+        });
+    });
+
+    group.finish();
+}
+
+fn bench_simd_threshold(c: &mut Criterion) {
+    let mut group = c.benchmark_group("simd_threshold");
+
+    // Test around the threshold (16 blades) to validate the decision
+    for dims in [3, 4, 5] {
+        let num_blades = 1 << dims;
+        let a = create_test_multivector(dims, 42);
+        let b = create_test_multivector(dims, 137);
+
+        let name = match dims {
+            3 => "R3_8blades",
+            4 => "R4_16blades",
+            5 => "CGA_32blades",
+            _ => "Unknown",
+        };
+
+        let uses_simd = should_use_simd(num_blades);
+
+        group.bench_with_input(
+            BenchmarkId::new(format!("{}/simd={}", name, uses_simd), num_blades),
+            &(a, b),
+            |bench, (a, b)| {
+                bench.iter(|| {
+                    black_box(a.geometric_product(b).unwrap())
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
+// =============================================================================
 // Criterion Configuration
 // =============================================================================
 
@@ -533,6 +703,10 @@ criterion_group!(
     // Geometric product
     bench_geometric_product_single,
     bench_geometric_product_batched,
+    // SIMD comparisons
+    bench_gp_simd_vs_scalar,
+    bench_gp_simd_dense_vs_sparse,
+    bench_simd_threshold,
     // Other products
     bench_outer_product,
     bench_inner_product,

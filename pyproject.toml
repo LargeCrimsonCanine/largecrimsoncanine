@@ -9,7 +9,31 @@ description = "High-performance geometric algebra for Python, built on a Rust ba
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+viz = ["ipython>=7.0"]
+dev = [
+    "pytest>=7.0",
+    "ipython>=7.0",
+]
 
 [tool.maturin]
+module-name = "largecrimsoncanine"
 features = ["pyo3/extension-module"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
