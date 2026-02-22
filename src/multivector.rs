@@ -3064,6 +3064,35 @@ impl Multivector {
         a.__add__(&b)
     }
 
+    /// Normalized linear interpolation between two multivectors.
+    ///
+    /// Returns normalize((1 - t) * self + t * other).
+    ///
+    /// This is lerp followed by normalization. It's faster than slerp but
+    /// doesn't have constant angular velocity - the interpolation speeds up
+    /// near the endpoints when vectors are far apart.
+    ///
+    /// Commonly used for:
+    /// - Fast vector interpolation where constant speed isn't critical
+    /// - Quick approximation of slerp when t is near 0 or 1
+    /// - Performance-critical applications where many interpolations are needed
+    ///
+    /// For t=0 returns normalized self, for t=1 returns normalized other.
+    ///
+    /// Raises ValueError if the interpolated result has zero norm.
+    ///
+    /// Example:
+    /// ```python
+    /// v1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// v2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// mid = v1.nlerp(v2, 0.5)  # Normalized midpoint
+    /// assert abs(mid.norm() - 1.0) < 1e-10
+    /// ```
+    pub fn nlerp(&self, other: &Multivector, t: f64) -> PyResult<Self> {
+        let lerped = self.lerp(other, t)?;
+        lerped.normalized()
+    }
+
     /// Extract the rotation angle from a rotor.
     ///
     /// For a rotor R = cos(θ/2) + sin(θ/2) * B̂ where B̂ is a unit bivector,

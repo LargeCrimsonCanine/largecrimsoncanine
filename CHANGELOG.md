@@ -109,6 +109,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `is_unit()` — check if norm is 1
 - `dot()` — alias for scalar_product
 - `lerp(other, t)` — linear interpolation
+- `nlerp(other, t)` — normalized linear interpolation (lerp + normalize)
 - `magnitude()` — alias for norm
 - `squared()` — geometric product with self (A * A)
 - `is_even()`, `is_odd()` — check if only even/odd grades
@@ -184,7 +185,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (594 tests)
+- Python test suite (602 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
