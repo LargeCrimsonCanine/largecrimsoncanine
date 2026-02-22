@@ -92,6 +92,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `has_grade(k)` — check if grade k has non-zero components
 - `pure_grade()` — return grade if single-grade, None otherwise
 - `is_scalar()`, `is_vector()`, `is_bivector()`, `is_trivector()` — grade checks
+- `vector_part()` — extract grade-1 component
+- `bivector_part()` — extract grade-2 component
+- `trivector_part()` — extract grade-3 component
+- `blades()` — decompose into (index, coefficient, grade) tuples
+- `grade_parts()` — dict mapping grade to multivector for each grade
 - `is_unit()` — check if norm is 1
 - `dot()` — alias for scalar_product
 - `lerp(other, t)` — linear interpolation
@@ -158,7 +163,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (526 tests)
+- Python test suite (536 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
