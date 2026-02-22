@@ -263,6 +263,168 @@ impl Multivector {
         Ok(Multivector { coeffs, dims })
     }
 
+    /// Create the unit vector e1 (first basis vector).
+    ///
+    /// Shorthand for `Multivector.basis(1, dims)`.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.e1(3)  # e1 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e1(dims: usize) -> PyResult<Self> {
+        Self::basis(1, dims)
+    }
+
+    /// Create the unit vector e2 (second basis vector).
+    ///
+    /// Shorthand for `Multivector.basis(2, dims)`.
+    /// Requires dims >= 2.
+    ///
+    /// Example:
+    /// ```python
+    /// e2 = Multivector.e2(3)  # e2 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e2(dims: usize) -> PyResult<Self> {
+        if dims < 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e2 requires dimension >= 2",
+            ));
+        }
+        Self::basis(2, dims)
+    }
+
+    /// Create the unit vector e3 (third basis vector).
+    ///
+    /// Shorthand for `Multivector.basis(3, dims)`.
+    /// Requires dims >= 3.
+    ///
+    /// Example:
+    /// ```python
+    /// e3 = Multivector.e3(3)  # e3 in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e3(dims: usize) -> PyResult<Self> {
+        if dims < 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e3 requires dimension >= 3",
+            ));
+        }
+        Self::basis(3, dims)
+    }
+
+    /// Create a random multivector with coefficients in [0, 1).
+    ///
+    /// Useful for testing and experimentation.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.random(3)  # random multivector in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn random(dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1",
+            ));
+        }
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let size = 1usize << dims;
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos() as u64;
+        // Simple LCG for reproducible but varied random numbers
+        let mut state = seed;
+        let coeffs: Vec<f64> = (0..size)
+            .map(|_| {
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                (state as f64) / (u64::MAX as f64)
+            })
+            .collect();
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create a random unit vector.
+    ///
+    /// Returns a normalized vector with random direction.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.random_vector(3)  # random unit vector in R^3
+    /// assert abs(v.norm() - 1.0) < 1e-10
+    /// ```
+    #[staticmethod]
+    pub fn random_vector(dims: usize) -> PyResult<Self> {
+        if dims == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dimension must be at least 1",
+            ));
+        }
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos() as u64;
+        // Simple LCG
+        let mut state = seed;
+        let coords: Vec<f64> = (0..dims)
+            .map(|_| {
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                // Map to [-1, 1] for better distribution
+                2.0 * (state as f64) / (u64::MAX as f64) - 1.0
+            })
+            .collect();
+        let v = Self::from_vector(coords)?;
+        v.normalized()
+    }
+
+    /// Create a random rotor (rotation).
+    ///
+    /// Returns a normalized rotor representing a random rotation.
+    /// Uses exponential map: generates a random bivector and exponentiates it.
+    ///
+    /// Example:
+    /// ```python
+    /// R = Multivector.random_rotor(3)  # random 3D rotation
+    /// assert R.is_rotor()
+    /// ```
+    #[staticmethod]
+    pub fn random_rotor(dims: usize) -> PyResult<Self> {
+        if dims < 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "rotors require dimension >= 2",
+            ));
+        }
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let seed = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos() as u64;
+
+        // Number of grade-2 components (bivector dimension)
+        let n_bivector = dims * (dims - 1) / 2;
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+
+        // Simple LCG for random bivector components
+        let mut state = seed;
+        for (i, coeff) in coeffs.iter_mut().enumerate() {
+            let grade = i.count_ones() as usize;
+            if grade == 2 {
+                state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+                // Random angle component, scaled to [-pi, pi]
+                let angle = std::f64::consts::PI * (2.0 * (state as f64) / (u64::MAX as f64) - 1.0);
+                // Scale by 1/sqrt(n_bivector) for reasonable total angle
+                *coeff = angle / (n_bivector as f64).sqrt();
+            }
+        }
+
+        let bivector = Multivector { coeffs, dims };
+        bivector.exp()
+    }
+
     /// Create a rotor that rotates vector `a` to vector `b`.
     ///
     /// The rotor R satisfies: R * a * ~R ∝ b (parallel to b).

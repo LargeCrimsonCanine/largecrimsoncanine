@@ -30,7 +30,13 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Multivector.from_vector(coords)` — vector from coordinates
 - `Multivector.from_bivector(components, dims)` — bivector from components
 - `Multivector.basis(index, dims)` — single basis vector
+- `Multivector.e1(dims)` — unit vector e1 (shorthand for basis(1, dims))
+- `Multivector.e2(dims)` — unit vector e2 (shorthand for basis(2, dims))
+- `Multivector.e3(dims)` — unit vector e3 (shorthand for basis(3, dims))
 - `Multivector.pseudoscalar(dims)` — unit pseudoscalar
+- `Multivector.random(dims)` — random multivector with coefficients in [0, 1)
+- `Multivector.random_vector(dims)` — random unit vector
+- `Multivector.random_rotor(dims)` — random rotor (rotation)
 - `Multivector.from_axis_angle(axis, angle)` — 3D rotor from axis and angle
 - `Multivector.from_quaternion(w, x, y, z)` — 3D rotor from quaternion
 - `to_quaternion()` — convert 3D rotor to quaternion (w, x, y, z)
@@ -152,7 +158,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (511 tests)
+- Python test suite (526 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
