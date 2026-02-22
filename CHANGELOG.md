@@ -105,6 +105,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `vector_part()` — extract grade-1 component
 - `bivector_part()` — extract grade-2 component
 - `trivector_part()` — extract grade-3 component
+- `to_vector_coords()` — extract vector coefficients as list [x, y, z, ...]
+- `to_bivector_coords()` — extract bivector coefficients as list
+- `to_trivector_coords()` — extract trivector coefficients as list
 - `blades()` — decompose into (index, coefficient, grade) tuples
 - `grade_parts()` — dict mapping grade to multivector for each grade
 - `sorted_blades()` — blades sorted by coefficient magnitude (descending)
@@ -190,7 +193,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (619 tests)
+- Python test suite (631 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

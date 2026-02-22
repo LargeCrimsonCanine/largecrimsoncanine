@@ -137,6 +137,67 @@ impl Multivector {
         self.grade(3).unwrap_or_else(|_| self.clone())
     }
 
+    /// Extract vector (grade-1) coefficients as a list.
+    ///
+    /// Returns a list of length `dims` containing the vector components
+    /// [x, y, z, ...] in order. Useful for interoperating with numpy or
+    /// other libraries that expect coordinate arrays.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 5.0])
+    /// coords = v.to_vector_coords()  # [3.0, 4.0, 5.0]
+    /// import numpy as np
+    /// arr = np.array(coords)  # Easy numpy conversion
+    /// ```
+    pub fn to_vector_coords(&self) -> Vec<f64> {
+        // Vector coefficients are at indices 1, 2, 4, 8, ... (powers of 2)
+        (0..self.dims).map(|i| self.coeffs[1 << i]).collect()
+    }
+
+    /// Extract bivector (grade-2) coefficients as a list.
+    ///
+    /// Returns a list of bivector components in canonical order.
+    /// For 3D: [e12, e13, e23] (indices 3, 5, 6)
+    /// For 4D: [e12, e13, e14, e23, e24, e34] (6 components)
+    ///
+    /// The number of components is dims*(dims-1)/2.
+    ///
+    /// Useful for extracting rotation planes or angular velocities.
+    ///
+    /// Example:
+    /// ```python
+    /// B = Multivector.from_bivector([1.0, 0.0, 0.0], dims=3)
+    /// comps = B.to_bivector_coords()  # [1.0, 0.0, 0.0]
+    /// ```
+    pub fn to_bivector_coords(&self) -> Vec<f64> {
+        // Bivector indices have exactly 2 bits set
+        self.coeffs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| if i.count_ones() == 2 { Some(c) } else { None })
+            .collect()
+    }
+
+    /// Extract trivector (grade-3) coefficients as a list.
+    ///
+    /// Returns a list of trivector components in canonical order.
+    /// The number of components is dims*(dims-1)*(dims-2)/6.
+    ///
+    /// Example:
+    /// ```python
+    /// T = some_multivector.trivector_part()
+    /// comps = T.to_trivector_coords()
+    /// ```
+    pub fn to_trivector_coords(&self) -> Vec<f64> {
+        // Trivector indices have exactly 3 bits set
+        self.coeffs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| if i.count_ones() == 3 { Some(c) } else { None })
+            .collect()
+    }
+
     /// Decompose this multivector into individual blade components.
     ///
     /// Returns a list of (index, coefficient, grade) tuples for each
