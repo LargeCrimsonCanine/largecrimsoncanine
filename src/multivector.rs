@@ -390,6 +390,124 @@ impl Multivector {
         Self::basis(3, dims)
     }
 
+    /// Create the unit basis vector e4 in Cl(n).
+    ///
+    /// Shorthand for `basis(4, dims)`.
+    ///
+    /// Raises ValueError if dimension < 4.
+    ///
+    /// Example:
+    /// ```python
+    /// e4 = Multivector.e4(4)  # e4 in Cl(4)
+    /// ```
+    #[staticmethod]
+    pub fn e4(dims: usize) -> PyResult<Self> {
+        if dims < 4 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e4 requires dimension >= 4",
+            ));
+        }
+        Self::basis(4, dims)
+    }
+
+    /// Create the unit basis bivector e12 = e1 ∧ e2 in Cl(n).
+    ///
+    /// This is the unit bivector spanning the plane of e1 and e2.
+    ///
+    /// Raises ValueError if dimension < 2.
+    ///
+    /// Example:
+    /// ```python
+    /// e12 = Multivector.e12(3)  # e12 bivector in Cl(3)
+    /// # e12 squares to -1: e12 * e12 = -1
+    /// ```
+    #[staticmethod]
+    pub fn e12(dims: usize) -> PyResult<Self> {
+        if dims < 2 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e12 requires dimension >= 2",
+            ));
+        }
+        // e12 = e1 ∧ e2, index 3 (binary 011)
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        coeffs[3] = 1.0;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create the unit basis bivector e23 = e2 ∧ e3 in Cl(n).
+    ///
+    /// This is the unit bivector spanning the plane of e2 and e3.
+    ///
+    /// Raises ValueError if dimension < 3.
+    ///
+    /// Example:
+    /// ```python
+    /// e23 = Multivector.e23(3)  # e23 bivector in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e23(dims: usize) -> PyResult<Self> {
+        if dims < 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e23 requires dimension >= 3",
+            ));
+        }
+        // e23 = e2 ∧ e3, index 6 (binary 110)
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        coeffs[6] = 1.0;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create the unit basis bivector e31 = e3 ∧ e1 in Cl(n).
+    ///
+    /// This is the unit bivector spanning the plane of e3 and e1.
+    /// Note: e31 = -e13 due to antisymmetry of the wedge product.
+    ///
+    /// Raises ValueError if dimension < 3.
+    ///
+    /// Example:
+    /// ```python
+    /// e31 = Multivector.e31(3)  # e31 bivector in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e31(dims: usize) -> PyResult<Self> {
+        if dims < 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "e31 requires dimension >= 3",
+            ));
+        }
+        // e31 = e3 ∧ e1 = -e1 ∧ e3 = -e13
+        // e13 has index 5 (binary 101), so e31 = -e13
+        let size = 1usize << dims;
+        let mut coeffs = vec![0.0; size];
+        coeffs[5] = -1.0;
+        Ok(Multivector { coeffs, dims })
+    }
+
+    /// Create the unit pseudoscalar e123 = e1 ∧ e2 ∧ e3 in 3D.
+    ///
+    /// This is the unit trivector in Cl(3), equivalent to `pseudoscalar(3)`.
+    ///
+    /// The pseudoscalar is used for:
+    /// - Computing duals
+    /// - Cross products: a × b = (a ∧ b) * e123⁻¹
+    /// - Volume calculations
+    ///
+    /// Raises ValueError if dimension != 3.
+    ///
+    /// Example:
+    /// ```python
+    /// I = Multivector.e123()  # Unit pseudoscalar in Cl(3)
+    /// ```
+    #[staticmethod]
+    pub fn e123() -> PyResult<Self> {
+        // e123 has index 7 (binary 111)
+        let mut coeffs = vec![0.0; 8];
+        coeffs[7] = 1.0;
+        Ok(Multivector { coeffs, dims: 3 })
+    }
+
     /// Create a random multivector with coefficients in [0, 1).
     ///
     /// Useful for testing and experimentation.

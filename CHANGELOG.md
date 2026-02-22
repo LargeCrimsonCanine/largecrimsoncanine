@@ -33,6 +33,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `Multivector.e1(dims)` — unit vector e1 (shorthand for basis(1, dims))
 - `Multivector.e2(dims)` — unit vector e2 (shorthand for basis(2, dims))
 - `Multivector.e3(dims)` — unit vector e3 (shorthand for basis(3, dims))
+- `Multivector.e4(dims)` — unit vector e4 (shorthand for basis(4, dims))
+- `Multivector.e12(dims)` — unit bivector e1∧e2
+- `Multivector.e23(dims)` — unit bivector e2∧e3
+- `Multivector.e31(dims)` — unit bivector e3∧e1
+- `Multivector.e123()` — unit pseudoscalar in 3D (e1∧e2∧e3)
 - `Multivector.pseudoscalar(dims)` — unit pseudoscalar
 - `Multivector.random(dims)` — random multivector with coefficients in [0, 1)
 - `Multivector.random_vector(dims)` — random unit vector
@@ -185,7 +190,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (602 tests)
+- Python test suite (619 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
