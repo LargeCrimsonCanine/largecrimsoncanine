@@ -26,6 +26,30 @@ pub struct Multivector {
     pub dims: usize,
 }
 
+/// Iterator over multivector coefficients.
+#[pyclass]
+pub struct CoeffIterator {
+    coeffs: Vec<f64>,
+    index: usize,
+}
+
+#[pymethods]
+impl CoeffIterator {
+    fn __iter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: pyo3::PyRefMut<'_, Self>) -> Option<f64> {
+        if slf.index < slf.coeffs.len() {
+            let val = slf.coeffs[slf.index];
+            slf.index += 1;
+            Some(val)
+        } else {
+            None
+        }
+    }
+}
+
 #[pymethods]
 impl Multivector {
     /// Create a new multivector from a coefficient list.
@@ -1091,6 +1115,24 @@ impl Multivector {
         self.coeffs.len()
     }
 
+    /// Iterate over coefficients.
+    ///
+    /// Returns an iterator over all blade coefficients in index order.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.0, 2.0])
+    /// list(mv)  # [0.0, 1.0, 2.0, 0.0]
+    /// for coeff in mv:
+    ///     print(coeff)
+    /// ```
+    pub fn __iter__(slf: pyo3::PyRef<'_, Self>) -> CoeffIterator {
+        CoeffIterator {
+            coeffs: slf.coeffs.clone(),
+            index: 0,
+        }
+    }
+
     /// Return the dimension of the base vector space.
     ///
     /// For Cl(n), this returns n. The multivector has 2^n coefficients.
@@ -1344,6 +1386,37 @@ impl Multivector {
                 index,
                 self.coeffs.len() - 1
             ))
+        })
+    }
+
+    /// Return a new multivector with a coefficient changed.
+    ///
+    /// Creates a copy with the coefficient at `index` set to `value`.
+    /// The original multivector is unchanged.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.zero(2)
+    /// mv2 = mv.set_coefficient(1, 5.0)  # Set e1 coefficient to 5
+    /// mv2.coefficient(1)  # 5.0
+    /// mv.coefficient(1)   # 0.0 (original unchanged)
+    /// ```
+    ///
+    /// # Errors
+    /// Returns ValueError if index is out of bounds.
+    pub fn set_coefficient(&self, index: usize, value: f64) -> PyResult<Self> {
+        if index >= self.coeffs.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "blade index {} out of bounds (max index is {})",
+                index,
+                self.coeffs.len() - 1
+            )));
+        }
+        let mut coeffs = self.coeffs.clone();
+        coeffs[index] = value;
+        Ok(Multivector {
+            coeffs,
+            dims: self.dims,
         })
     }
 

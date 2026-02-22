@@ -5393,3 +5393,111 @@ def test_coefficient_matches_getitem():
 
     for i in range(4):
         assert mv.coefficient(i) == mv[i]
+
+
+# =====================
+# Iterator and set_coefficient tests
+# =====================
+
+
+def test_iter_basic():
+    """Multivector is iterable."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    coeffs = list(mv)
+
+    assert coeffs == [0.0, 1.0, 2.0, 0.0]
+
+
+def test_iter_for_loop():
+    """Can use for loop on multivector."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    total = 0.0
+    for c in mv:
+        total += c
+
+    assert abs(total - 10.0) < 1e-10
+
+
+def test_iter_matches_to_list():
+    """Iteration matches to_list()."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+    assert list(mv) == mv.to_list()
+
+
+def test_iter_sum():
+    """Can use sum() on multivector."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    assert abs(sum(mv) - 10.0) < 1e-10
+
+
+def test_iter_enumerate():
+    """Can use enumerate() on multivector."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([5.0, 6.0])
+    pairs = list(enumerate(mv))
+
+    assert pairs == [(0, 0.0), (1, 5.0), (2, 6.0), (3, 0.0)]
+
+
+def test_set_coefficient_basic():
+    """set_coefficient returns modified copy."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    mv2 = mv.set_coefficient(1, 5.0)
+
+    assert abs(mv2.coefficient(1) - 5.0) < 1e-10
+    assert abs(mv.coefficient(1)) < 1e-10  # Original unchanged
+
+
+def test_set_coefficient_scalar():
+    """Can set scalar coefficient."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_vector([1.0, 2.0])
+    mv2 = mv.set_coefficient(0, 10.0)
+
+    assert abs(mv2.scalar() - 10.0) < 1e-10
+    assert mv2.is_vector() == False  # Now has scalar part
+
+
+def test_set_coefficient_immutable():
+    """set_coefficient doesn't modify original."""
+    import largecrimsoncanine as lcc
+
+    original = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+    modified = original.set_coefficient(0, 100.0)
+
+    assert abs(original.coefficient(0) - 1.0) < 1e-10
+    assert abs(modified.coefficient(0) - 100.0) < 1e-10
+
+
+def test_set_coefficient_out_of_bounds():
+    """set_coefficient raises error for invalid index."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)
+    with pytest.raises(ValueError, match="out of bounds"):
+        mv.set_coefficient(10, 5.0)
+
+
+def test_set_coefficient_chain():
+    """Can chain set_coefficient calls."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.zero(2)
+    mv2 = mv.set_coefficient(0, 1.0).set_coefficient(1, 2.0).set_coefficient(2, 3.0)
+
+    assert abs(mv2.coefficient(0) - 1.0) < 1e-10
+    assert abs(mv2.coefficient(1) - 2.0) < 1e-10
+    assert abs(mv2.coefficient(2) - 3.0) < 1e-10
