@@ -6486,3 +6486,123 @@ def test_grade_parts_empty_grades_not_included():
     assert 1 in parts
     assert 0 not in parts
     assert 2 not in parts
+
+
+# =====================
+# Comparison and analysis tests
+# =====================
+
+
+def test_norm_lt():
+    """norm_lt compares norms correctly."""
+    import largecrimsoncanine as lcc
+
+    small = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    large = lcc.Multivector.from_vector([3.0, 4.0, 0.0])  # norm = 5
+    assert small.norm_lt(large)
+    assert not large.norm_lt(small)
+
+
+def test_norm_gt():
+    """norm_gt compares norms correctly."""
+    import largecrimsoncanine as lcc
+
+    small = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    large = lcc.Multivector.from_vector([3.0, 4.0, 0.0])  # norm = 5
+    assert large.norm_gt(small)
+    assert not small.norm_gt(large)
+
+
+def test_norm_lt_equal():
+    """norm_lt returns False for equal norms."""
+    import largecrimsoncanine as lcc
+
+    v1 = lcc.Multivector.from_vector([1.0, 0.0])
+    v2 = lcc.Multivector.from_vector([0.0, 1.0])
+    assert not v1.norm_lt(v2)
+    assert not v2.norm_lt(v1)
+
+
+def test_dominant_grade_vector():
+    """dominant_grade returns 1 for vectors."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    assert v.dominant_grade() == 1
+
+
+def test_dominant_grade_mixed():
+    """dominant_grade returns grade with largest magnitude."""
+    import largecrimsoncanine as lcc
+
+    # Create: 0.1 + 5*e1 + 0.5*e12
+    coeffs = [0.1, 5.0, 0.0, 0.5]
+    mv = lcc.Multivector.from_list(coeffs)
+    assert mv.dominant_grade() == 1  # vector dominates
+
+
+def test_dominant_grade_zero():
+    """dominant_grade returns None for zero multivector."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(2)
+    assert z.dominant_grade() is None
+
+
+def test_dominant_blade():
+    """dominant_blade returns index of largest coefficient."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0, 5.0, 2.0, 0.5]
+    mv = lcc.Multivector.from_list(coeffs)
+    assert mv.dominant_blade() == 1  # e1 has coeff 5
+
+
+def test_dominant_blade_negative():
+    """dominant_blade considers absolute value."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0, -10.0, 2.0, 0.5]
+    mv = lcc.Multivector.from_list(coeffs)
+    assert mv.dominant_blade() == 1  # -10 has largest absolute value
+
+
+def test_dominant_blade_zero():
+    """dominant_blade returns None for zero multivector."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(2)
+    assert z.dominant_blade() is None
+
+
+def test_sorted_blades():
+    """sorted_blades returns blades sorted by magnitude."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0, 5.0, 2.0, 0.5]
+    mv = lcc.Multivector.from_list(coeffs)
+    blades = mv.sorted_blades()
+    # Should be sorted descending by |coefficient|
+    assert blades[0][0] == 1  # e1 with coeff 5
+    assert blades[1][0] == 2  # e2 with coeff 2
+    assert blades[2][0] == 0  # scalar with coeff 1
+    assert blades[3][0] == 3  # e12 with coeff 0.5
+
+
+def test_sorted_blades_includes_grade():
+    """sorted_blades includes correct grade for each blade."""
+    import largecrimsoncanine as lcc
+
+    coeffs = [1.0, 2.0, 3.0, 4.0]
+    mv = lcc.Multivector.from_list(coeffs)
+    blades = mv.sorted_blades()
+    for idx, coeff, grade in blades:
+        assert grade == bin(idx).count('1')
+
+
+def test_sorted_blades_empty_for_zero():
+    """sorted_blades returns empty list for zero multivector."""
+    import largecrimsoncanine as lcc
+
+    z = lcc.Multivector.zero(2)
+    assert z.sorted_blades() == []

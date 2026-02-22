@@ -1483,6 +1483,90 @@ impl Multivector {
         }
     }
 
+    /// Compare norms: returns true if self.norm() < other.norm().
+    ///
+    /// Useful for sorting multivectors by magnitude.
+    pub fn norm_lt(&self, other: &Multivector) -> bool {
+        self.norm() < other.norm()
+    }
+
+    /// Compare norms: returns true if self.norm() > other.norm().
+    pub fn norm_gt(&self, other: &Multivector) -> bool {
+        self.norm() > other.norm()
+    }
+
+    /// Return the grade with the largest total coefficient magnitude.
+    ///
+    /// For a mixed multivector, this identifies which grade dominates.
+    /// Returns None for the zero multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = 0.1 + 5*e1 + 2*e2 + 0.5*e12
+    /// mv.dominant_grade()  # 1 (vector part dominates)
+    /// ```
+    pub fn dominant_grade(&self) -> Option<usize> {
+        if self.is_zero() {
+            return None;
+        }
+        let mut grade_magnitudes: std::collections::HashMap<usize, f64> =
+            std::collections::HashMap::new();
+        for (i, &c) in self.coeffs.iter().enumerate() {
+            let grade = i.count_ones() as usize;
+            *grade_magnitudes.entry(grade).or_insert(0.0) += c.abs();
+        }
+        grade_magnitudes
+            .into_iter()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .map(|(g, _)| g)
+    }
+
+    /// Return the blade index with the largest absolute coefficient.
+    ///
+    /// Returns None for the zero multivector.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = 1 + 5*e1 + 2*e2
+    /// mv.dominant_blade()  # 1 (index of e1)
+    /// ```
+    pub fn dominant_blade(&self) -> Option<usize> {
+        if self.is_zero() {
+            return None;
+        }
+        self.coeffs
+            .iter()
+            .enumerate()
+            .max_by(|a, b| a.1.abs().partial_cmp(&b.1.abs()).unwrap())
+            .map(|(i, _)| i)
+    }
+
+    /// Return blades sorted by absolute coefficient magnitude (descending).
+    ///
+    /// Returns list of (index, coefficient, grade) tuples.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = 1 + 5*e1 + 2*e2
+    /// mv.sorted_blades()  # [(1, 5.0, 1), (2, 2.0, 1), (0, 1.0, 0)]
+    /// ```
+    pub fn sorted_blades(&self) -> Vec<(usize, f64, usize)> {
+        let mut blades: Vec<(usize, f64, usize)> = self
+            .coeffs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &c)| {
+                if c != 0.0 {
+                    Some((i, c, i.count_ones() as usize))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        blades.sort_by(|a, b| b.1.abs().partial_cmp(&a.1.abs()).unwrap());
+        blades
+    }
+
     /// Return the number of coefficients.
     pub fn __len__(&self) -> usize {
         self.coeffs.len()
