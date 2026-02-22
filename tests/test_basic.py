@@ -8840,3 +8840,240 @@ def test_homogeneous_grade_mixed():
     mv = scalar.__add__(vector)
 
     assert mv.homogeneous_grade() is None
+
+
+# ============================================================================
+# ROTOR COMPOSITION TESTS
+# ============================================================================
+
+
+def test_compose_with_identity():
+    """compose_with identity rotor returns original."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 4)
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+
+    composed = R.compose_with(identity)
+
+    assert composed.approx_eq(R)
+
+
+def test_compose_with_double_rotation():
+    """compose_with doubles rotation angle."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 4)  # 45°
+
+    R2 = R.compose_with(R)  # Should be 90°
+
+    assert abs(R2.rotation_angle() - math.pi / 2) < 1e-10
+
+
+def test_compose_with_is_normalized():
+    """compose_with returns normalized rotor."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R1 = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+    R2 = lcc.Multivector.from_axis_angle(e3, math.pi / 6)
+
+    composed = R1.compose_with(R2)
+
+    assert abs(composed.norm() - 1.0) < 1e-10
+
+
+def test_inverse_rotor_basic():
+    """inverse_rotor gives multiplicative inverse."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+    R_inv = R.inverse_rotor()
+
+    # R * R_inv should be identity (scalar 1)
+    product = R.compose_with(R_inv)
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+
+    assert product.approx_eq(identity)
+
+
+def test_inverse_rotor_reverses_rotation():
+    """inverse_rotor negates rotation angle."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+    R_inv = R.inverse_rotor()
+
+    # Apply R then R_inv to a vector should give original
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    rotated = R.sandwich(v)
+    back = R_inv.sandwich(rotated)
+
+    assert back.approx_eq(v)
+
+
+def test_rotor_difference_basic():
+    """rotor_difference gives correct transformation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R1 = lcc.Multivector.from_axis_angle(e3, math.pi / 4)
+    R2 = lcc.Multivector.from_axis_angle(e3, 3 * math.pi / 4)
+
+    R_diff = R1.rotor_difference(R2)
+
+    # R_diff should be ~90° (pi/2) rotation
+    assert abs(R_diff.rotation_angle() - math.pi / 2) < 1e-10
+
+
+def test_rotor_difference_identity():
+    """rotor_difference with same rotor is identity."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+
+    R_diff = R.rotor_difference(R)
+
+    # Should be identity
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    assert R_diff.same_rotation(identity)
+
+
+def test_rotor_between_planes_basic():
+    """rotor_between_planes creates correct rotation."""
+    import largecrimsoncanine as lcc
+
+    xy_plane = lcc.Multivector.e12(3)
+    xz_plane = lcc.Multivector.e31(3).__neg__()  # e13 orientation
+
+    R = lcc.Multivector.rotor_between_planes(xy_plane, xz_plane)
+
+    # R should rotate the xy-plane to align with the xz-plane
+    # The normals are e3 and e2 respectively
+    e3 = lcc.Multivector.e3(3)
+    e2 = lcc.Multivector.e2(3)
+
+    rotated_normal = R.sandwich(e3)
+
+    # Should transform e3 to ±e2
+    assert rotated_normal.approx_eq(e2) or rotated_normal.approx_eq(e2.__neg__())
+
+
+def test_same_rotation_equal():
+    """same_rotation returns True for equal rotors."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+
+    assert R.same_rotation(R)
+
+
+def test_same_rotation_negated():
+    """same_rotation returns True for R and -R."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+    R_neg = R.__neg__()
+
+    assert R.same_rotation(R_neg)
+
+
+def test_same_rotation_different():
+    """same_rotation returns False for different rotations."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R1 = lcc.Multivector.from_axis_angle(e3, math.pi / 4)
+    R2 = lcc.Multivector.from_axis_angle(e3, math.pi / 2)
+
+    assert not R1.same_rotation(R2)
+
+
+def test_decompose_rotor_roundtrip():
+    """decompose_rotor recovers axis and angle."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    angle = math.pi / 5
+    R = lcc.Multivector.from_axis_angle(e3, angle)
+
+    axis, recovered_angle = R.decompose_rotor()
+
+    assert abs(recovered_angle - angle) < 1e-10
+    # Axis should be parallel to e3
+    assert axis.is_parallel(e3)
+
+
+def test_decompose_rotor_arbitrary_axis():
+    """decompose_rotor works with arbitrary axis."""
+    import math
+    import largecrimsoncanine as lcc
+
+    axis = lcc.Multivector.from_vector([1.0, 1.0, 1.0]).normalized()
+    angle = math.pi / 6
+    R = lcc.Multivector.from_axis_angle(axis, angle)
+
+    recovered_axis, recovered_angle = R.decompose_rotor()
+
+    assert abs(recovered_angle - angle) < 1e-10
+    assert recovered_axis.is_parallel(axis)
+
+
+def test_rotation_angle_degrees():
+    """rotation_angle_degrees returns angle in degrees."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 2)  # 90°
+
+    degrees = R.rotation_angle_degrees()
+
+    assert abs(degrees - 90.0) < 1e-10
+
+
+def test_rotation_angle_degrees_45():
+    """rotation_angle_degrees for 45° rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 4)
+
+    degrees = R.rotation_angle_degrees()
+
+    assert abs(degrees - 45.0) < 1e-10
+
+
+def test_normalize_rotor():
+    """normalize_rotor returns unit rotor."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    R = lcc.Multivector.from_axis_angle(e3, math.pi / 3)
+    # Scale by non-unit factor
+    scaled = R * 2.0
+
+    normalized = scaled.normalize_rotor()
+
+    assert abs(normalized.norm() - 1.0) < 1e-10
+    assert normalized.same_rotation(R)

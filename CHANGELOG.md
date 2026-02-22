@@ -77,6 +77,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `sqrt()` — square root of rotor (half the rotation angle)
 - `powf(t)` — raise rotor to float power (fractional rotations)
 - `slerp(other, t)` — spherical linear interpolation between rotors
+- `compose_with(other)` — compose two rotors (apply self first, then other)
+- `inverse_rotor()` — compute inverse of a rotor
+- `rotor_difference(other)` — rotor that transforms self to other
+- `Multivector.rotor_between_planes(plane1, plane2)` — rotor rotating plane1 to plane2
+- `same_rotation(other)` — check if two rotors represent the same rotation (R ≈ ±other)
+- `decompose_rotor()` — decompose 3D rotor into (axis, angle) tuple
+- `normalize_rotor()` — normalize rotor to unit norm
+- `rotation_angle_degrees()` — rotation angle in degrees
 - `rotation_angle()` — extract rotation angle from rotor
 - `rotation_plane()` — extract rotation plane (bivector) from rotor
 - `axis_angle()` — decompose 3D rotor into axis and angle
@@ -221,7 +229,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (729 tests)
+- Python test suite (745 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
