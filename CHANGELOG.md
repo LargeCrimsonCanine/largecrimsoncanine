@@ -145,13 +145,14 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `math.trunc()` (`__trunc__`) — truncate all coefficients
 - `float()` function (`__float__`) — convert scalar multivector to float
 - `int()` function (`__int__`) — convert scalar multivector to int
+- `format()` function (`__format__`) — custom formatting with specs (.2f, .3e, +.4g)
 - `coefficients()` — return all coefficients as list
 - `set_coefficient(index, value)` — return copy with coefficient changed
 - `dimension` / `dims` — base vector space dimension (property)
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (502 tests)
+- Python test suite (511 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
