@@ -3481,6 +3481,131 @@ impl Multivector {
     }
 
     // =========================================================================
+    // VECTOR UTILITIES
+    // =========================================================================
+
+    /// Get the component of this vector parallel to another vector.
+    ///
+    /// This is an alias for `project(v)` with clearer naming for vector operations.
+    /// For a vector a and direction v, returns the component of a along v.
+    ///
+    /// Formula: (a · v / |v|²) * v = (a ⌋ v) * v⁻¹
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 0.0])
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// parallel = v.parallel_component(e1)  # 3.0*e1
+    /// ```
+    ///
+    /// Reference: Standard vector projection
+    pub fn parallel_component(&self, direction: &Multivector) -> PyResult<Self> {
+        self.project(direction)
+    }
+
+    /// Get the component of this vector perpendicular to another vector.
+    ///
+    /// This is an alias for `reject(v)` with clearer naming for vector operations.
+    /// For a vector a and direction v, returns the component of a perpendicular to v.
+    ///
+    /// Satisfies: a = a.parallel_component(v) + a.perpendicular_component(v)
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 0.0])
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// perp = v.perpendicular_component(e1)  # 4.0*e2
+    /// ```
+    ///
+    /// Reference: Standard vector rejection
+    pub fn perpendicular_component(&self, direction: &Multivector) -> PyResult<Self> {
+        self.reject(direction)
+    }
+
+    /// Rotate this multivector by a rotor.
+    ///
+    /// Computes R * self * ~R where R is the rotor.
+    /// This is the inverse calling convention of `rotor.sandwich(x)` -
+    /// instead of calling `rotor.apply(vector)`, you can call `vector.rotate_by(rotor)`.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+    /// rotated = e1.rotate_by(R)  # should equal e2
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn rotate_by(&self, rotor: &Multivector) -> PyResult<Self> {
+        rotor.sandwich(self)
+    }
+
+    /// Compute the scalar triple product a · (b × c).
+    ///
+    /// For three vectors a, b, c in 3D, computes the scalar triple product
+    /// which gives the signed volume of the parallelepiped spanned by the vectors.
+    ///
+    /// In geometric algebra: a · (b × c) = a ⌋ (b ∧ c) = a ∧ b ∧ c (grade-3 part)
+    ///
+    /// Properties:
+    /// - |a · (b × c)| = volume of parallelepiped
+    /// - Sign indicates orientation (right-hand rule)
+    /// - Zero if vectors are coplanar
+    ///
+    /// Only defined for vectors in 3D (Cl(3)).
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0, 0.0])
+    /// e3 = Multivector.from_vector([0.0, 0.0, 1.0])
+    /// vol = e1.triple_product(e2, e3)  # 1.0
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.3 [VERIFY]
+    pub fn triple_product(&self, b: &Multivector, c: &Multivector) -> PyResult<f64> {
+        if self.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "triple product is only defined in 3D; this multivector is in Cl({})",
+                self.dims
+            )));
+        }
+        if b.dims != 3 || c.dims != 3 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "all three vectors must be in 3D for triple product",
+            ));
+        }
+
+        // a · (b × c) = a ∧ b ∧ c (the trivector coefficient)
+        let wedge_bc = b.outer_product(c)?;
+        let trivector = self.outer_product(&wedge_bc)?;
+
+        // Extract the pseudoscalar (trivector) coefficient
+        // In 3D, the pseudoscalar is at index 7 (e123)
+        Ok(trivector.coeffs[7])
+    }
+
+    /// Return a unit (normalized) copy of this multivector.
+    ///
+    /// This is an alias for `normalized()` - a common shorthand in vector math.
+    /// Returns a multivector with the same direction but unit norm.
+    ///
+    /// Raises ValueError if the norm is zero.
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([3.0, 4.0, 0.0])
+    /// u = v.unit()  # [0.6, 0.8, 0.0]
+    /// assert abs(u.norm() - 1.0) < 1e-10
+    /// ```
+    ///
+    /// Reference: Standard normalization
+    pub fn unit(&self) -> PyResult<Self> {
+        self.normalized()
+    }
+
+    // =========================================================================
     // DUAL OPERATIONS
     // =========================================================================
 

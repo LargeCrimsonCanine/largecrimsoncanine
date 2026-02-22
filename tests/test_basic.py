@@ -6838,3 +6838,291 @@ def test_norm_comparison():
     assert mv.l1_norm() >= mv.norm()
     # Note: norm() is L2 norm of coefficient vector for vectors,
     # but includes metric for general GA norm
+
+
+# =============================================================================
+# VECTOR UTILITIES
+# =============================================================================
+
+
+def test_parallel_component_basic():
+    """parallel_component returns projection onto direction."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    parallel = v.parallel_component(e1)
+
+    # Should be 3.0 * e1
+    expected = lcc.Multivector.from_vector([3.0, 0.0, 0.0])
+    assert parallel.approx_eq(expected)
+
+
+def test_parallel_component_equals_project():
+    """parallel_component is alias for project."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    direction = lcc.Multivector.from_vector([1.0, 2.0, 0.0])
+
+    parallel = v.parallel_component(direction)
+    projected = v.project(direction)
+
+    assert parallel.approx_eq(projected)
+
+
+def test_parallel_component_on_same_direction():
+    """parallel_component along same direction returns original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    parallel = v.parallel_component(v)
+
+    assert parallel.approx_eq(v)
+
+
+def test_perpendicular_component_basic():
+    """perpendicular_component returns rejection from direction."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    perp = v.perpendicular_component(e1)
+
+    # Should be 4.0 * e2
+    expected = lcc.Multivector.from_vector([0.0, 4.0, 0.0])
+    assert perp.approx_eq(expected)
+
+
+def test_perpendicular_component_equals_reject():
+    """perpendicular_component is alias for reject."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    direction = lcc.Multivector.from_vector([1.0, 2.0, 0.0])
+
+    perp = v.perpendicular_component(direction)
+    rejected = v.reject(direction)
+
+    assert perp.approx_eq(rejected)
+
+
+def test_parallel_plus_perpendicular_equals_original():
+    """parallel + perpendicular components reconstruct original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    direction = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    parallel = v.parallel_component(direction)
+    perp = v.perpendicular_component(direction)
+    reconstructed = parallel + perp
+
+    assert reconstructed.approx_eq(v)
+
+
+def test_perpendicular_component_on_same_direction():
+    """perpendicular_component along same direction is zero."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    perp = v.perpendicular_component(v)
+
+    zero = lcc.Multivector.from_vector([0.0, 0.0, 0.0])
+    assert perp.approx_eq(zero)
+
+
+def test_rotate_by_basic():
+    """rotate_by applies rotor rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+
+    # Create 90-degree rotor from e1 to e2
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotate e1 by R
+    rotated = e1.rotate_by(R)
+
+    assert rotated.approx_eq(e2)
+
+
+def test_rotate_by_equals_apply():
+    """rotate_by(R) equals R.apply(self)."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    rotated1 = v.rotate_by(R)
+    rotated2 = R.apply(v)
+
+    assert rotated1.approx_eq(rotated2)
+
+
+def test_rotate_by_identity():
+    """rotate_by identity rotor returns original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+
+    rotated = v.rotate_by(identity)
+
+    assert rotated.approx_eq(v)
+
+
+def test_rotate_by_full_rotation():
+    """Two 90-degree rotations equal 180-degree rotation."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    # Rotate e1 by R twice (180 degrees total)
+    rotated = e1.rotate_by(R).rotate_by(R)
+
+    # Should equal -e1
+    neg_e1 = lcc.Multivector.from_vector([-1.0, 0.0, 0.0])
+    assert rotated.approx_eq(neg_e1)
+
+
+def test_triple_product_orthonormal():
+    """triple_product of orthonormal basis is 1."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    e2 = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    e3 = lcc.Multivector.from_vector([0.0, 0.0, 1.0])
+
+    vol = e1.triple_product(e2, e3)
+    assert abs(vol - 1.0) < 1e-10
+
+
+def test_triple_product_cyclic():
+    """triple_product is cyclic: a·(b×c) = b·(c×a) = c·(a×b)."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+    c = lcc.Multivector.from_vector([7.0, 8.0, 9.0])
+
+    abc = a.triple_product(b, c)
+    bca = b.triple_product(c, a)
+    cab = c.triple_product(a, b)
+
+    assert abs(abc - bca) < 1e-10
+    assert abs(bca - cab) < 1e-10
+
+
+def test_triple_product_anticyclic():
+    """triple_product changes sign on swap: a·(b×c) = -a·(c×b)."""
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    b = lcc.Multivector.from_vector([4.0, 5.0, 6.0])
+    c = lcc.Multivector.from_vector([7.0, 8.0, 0.0])
+
+    abc = a.triple_product(b, c)
+    acb = a.triple_product(c, b)
+
+    assert abs(abc + acb) < 1e-10
+
+
+def test_triple_product_coplanar_is_zero():
+    """triple_product of coplanar vectors is zero."""
+    import largecrimsoncanine as lcc
+
+    # Three vectors in the xy-plane
+    a = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 1.0, 0.0])
+    c = lcc.Multivector.from_vector([1.0, 1.0, 0.0])
+
+    vol = a.triple_product(b, c)
+    assert abs(vol) < 1e-10
+
+
+def test_triple_product_volume():
+    """triple_product gives volume of parallelepiped."""
+    import largecrimsoncanine as lcc
+
+    # Unit cube stretched to 2x3x4 box
+    a = lcc.Multivector.from_vector([2.0, 0.0, 0.0])
+    b = lcc.Multivector.from_vector([0.0, 3.0, 0.0])
+    c = lcc.Multivector.from_vector([0.0, 0.0, 4.0])
+
+    vol = a.triple_product(b, c)
+    assert abs(vol - 24.0) < 1e-10
+
+
+def test_triple_product_dimension_check():
+    """triple_product raises error for non-3D."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    a = lcc.Multivector.from_vector([1.0, 2.0])  # 2D
+    b = lcc.Multivector.from_vector([3.0, 4.0])
+    c = lcc.Multivector.from_vector([5.0, 6.0])
+
+    with pytest.raises(ValueError, match="only defined in 3D"):
+        a.triple_product(b, c)
+
+
+def test_unit_basic():
+    """unit returns normalized vector."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    u = v.unit()
+
+    assert abs(u.norm() - 1.0) < 1e-10
+
+
+def test_unit_direction_preserved():
+    """unit preserves direction."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    u = v.unit()
+
+    # u should be parallel to v
+    expected = lcc.Multivector.from_vector([0.6, 0.8, 0.0])
+    assert u.approx_eq(expected)
+
+
+def test_unit_equals_normalized():
+    """unit is alias for normalized."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 5.0])
+
+    unit_v = v.unit()
+    normalized_v = v.normalized()
+
+    assert unit_v.approx_eq(normalized_v)
+
+
+def test_unit_already_normalized():
+    """unit of unit vector returns same."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 0.0, 0.0])
+    u = v.unit()
+
+    assert u.approx_eq(v)
+
+
+def test_unit_zero_raises():
+    """unit of zero vector raises error."""
+    import pytest
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.zero(3)
+
+    with pytest.raises(ValueError, match="zero"):
+        v.unit()

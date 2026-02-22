@@ -83,6 +83,11 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `reflect(n)` — reflection across hyperplane perpendicular to n
 - `project(B)` — projection onto blade B
 - `reject(B)` — rejection from blade B
+- `parallel_component(v)` — component parallel to vector (alias for project)
+- `perpendicular_component(v)` — component perpendicular to vector (alias for reject)
+- `rotate_by(rotor)` — apply rotor rotation to this multivector
+- `triple_product(b, c)` — scalar triple product a·(b×c) in 3D
+- `unit()` — return unit (normalized) multivector (alias for normalized)
 
 **Utilities**
 - `is_blade()` — check if multivector is a simple k-vector
@@ -179,7 +184,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (572 tests)
+- Python test suite (594 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching
