@@ -1324,6 +1324,29 @@ impl Multivector {
         self.coeffs.iter().any(|&c| c != 0.0)
     }
 
+    /// Get coefficient by blade index (named method alternative to indexing).
+    ///
+    /// Equivalent to `mv[index]` but more explicit.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// mv.coefficient(1)  # e1 coefficient = 1.0
+    /// mv.coefficient(3)  # e12 coefficient = 0.0
+    /// ```
+    ///
+    /// # Errors
+    /// Returns ValueError if index is out of bounds.
+    pub fn coefficient(&self, index: usize) -> PyResult<f64> {
+        self.coeffs.get(index).copied().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "blade index {} out of bounds (max index is {})",
+                index,
+                self.coeffs.len() - 1
+            ))
+        })
+    }
+
     /// Return the norm (magnitude) via abs().
     pub fn __abs__(&self) -> f64 {
         self.norm()

@@ -5336,3 +5336,60 @@ def test_clear_grade_preserves_other_grades():
     assert abs(cleared.grade(2).to_list()[3] - 4.0) < 1e-10
     # Vector (grade 1) is zero
     assert cleared.grade(1).is_zero()
+
+
+# =====================
+# Coefficient access tests
+# =====================
+
+
+def test_coefficient_basic():
+    """coefficient() returns blade coefficient."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+
+    # e1 is index 1, e2 is index 2, e3 is index 4
+    assert abs(v.coefficient(1) - 1.0) < 1e-10
+    assert abs(v.coefficient(2) - 2.0) < 1e-10
+    assert abs(v.coefficient(4) - 3.0) < 1e-10
+
+
+def test_coefficient_scalar():
+    """coefficient(0) returns scalar part."""
+    import largecrimsoncanine as lcc
+
+    s = lcc.Multivector.from_scalar(5.0, dims=3)
+    assert abs(s.coefficient(0) - 5.0) < 1e-10
+
+
+def test_coefficient_bivector():
+    """coefficient() works with bivectors."""
+    import largecrimsoncanine as lcc
+
+    # e12 (index 3), e13 (index 5), e23 (index 6)
+    B = lcc.Multivector.from_bivector([1.0, 2.0, 3.0], dims=3)
+
+    assert abs(B.coefficient(3) - 1.0) < 1e-10  # e12
+    assert abs(B.coefficient(5) - 2.0) < 1e-10  # e13
+    assert abs(B.coefficient(6) - 3.0) < 1e-10  # e23
+
+
+def test_coefficient_out_of_bounds():
+    """coefficient() raises error for invalid index."""
+    import largecrimsoncanine as lcc
+    import pytest
+
+    mv = lcc.Multivector.zero(2)  # 4 coefficients
+    with pytest.raises(ValueError, match="out of bounds"):
+        mv.coefficient(10)
+
+
+def test_coefficient_matches_getitem():
+    """coefficient() returns same as __getitem__."""
+    import largecrimsoncanine as lcc
+
+    mv = lcc.Multivector.from_list([1.0, 2.0, 3.0, 4.0])
+
+    for i in range(4):
+        assert mv.coefficient(i) == mv[i]
