@@ -7602,3 +7602,159 @@ def test_extraction_roundtrip():
     reconstructed = lcc.Multivector.from_vector(coords)
 
     assert original.approx_eq(reconstructed)
+
+
+# =============================================================================
+# SPINOR OPERATIONS
+# =============================================================================
+
+
+def test_sqrt_basic():
+    """sqrt of a rotor gives half the rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+
+    half_R = R.sqrt()
+
+    # half_R * half_R should equal R
+    reconstructed = half_R * half_R
+    assert reconstructed.approx_eq(R)
+
+
+def test_sqrt_identity():
+    """sqrt of identity rotor is identity."""
+    import largecrimsoncanine as lcc
+
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    sqrt_id = identity.sqrt()
+
+    assert sqrt_id.approx_eq(identity)
+
+
+def test_sqrt_half_rotation():
+    """sqrt of 180° rotation is 90° rotation."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+
+    # Create 180° rotor (e1 -> -e1)
+    R180 = lcc.Multivector.from_axis_angle(
+        lcc.Multivector.e3(3), math.pi
+    )
+
+    R90 = R180.sqrt()
+    angle = R90.rotation_angle()
+
+    assert abs(angle - math.pi / 2) < 1e-10
+
+
+def test_sqrt_preserves_unit():
+    """sqrt of unit rotor is unit rotor."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    sqrt_R = R.sqrt()
+
+    assert abs(sqrt_R.norm() - 1.0) < 1e-10
+
+
+def test_powf_identity():
+    """R^0 is identity, R^1 is R."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    R0 = R.powf(0.0)
+    R1 = R.powf(1.0)
+
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    assert R0.approx_eq(identity)
+    assert R1.approx_eq(R)
+
+
+def test_powf_half():
+    """R^0.5 equals sqrt(R)."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    half_power = R.powf(0.5)
+    sqrt_r = R.sqrt()
+
+    assert half_power.approx_eq(sqrt_r)
+
+
+def test_powf_double():
+    """R^2 equals R*R."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    R2_power = R.powf(2.0)
+    R2_mult = R * R
+
+    assert R2_power.approx_eq(R2_mult)
+
+
+def test_powf_fractional():
+    """Fractional powers scale rotation angle."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+
+    R_quarter = R.powf(0.25)
+    angle = R_quarter.rotation_angle()
+
+    # Should be 90° * 0.25 = 22.5°
+    expected = math.pi / 2 * 0.25
+    assert abs(angle - expected) < 1e-10
+
+
+def test_powf_negative():
+    """Negative power gives inverse rotation."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    R_inv = R.powf(-1.0)
+    product = R * R_inv
+
+    identity = lcc.Multivector.from_scalar(1.0, 3)
+    assert product.approx_eq(identity)
+
+
+def test_powf_sum_of_powers():
+    """R^a * R^b = R^(a+b)."""
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e2 = lcc.Multivector.e2(3)
+    R = lcc.Multivector.rotor_from_vectors(e1, e2)
+
+    R_a = R.powf(0.3)
+    R_b = R.powf(0.7)
+    R_ab = R_a * R_b
+
+    R_sum = R.powf(1.0)  # 0.3 + 0.7 = 1.0
+
+    assert R_ab.approx_eq(R_sum)

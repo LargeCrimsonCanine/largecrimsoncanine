@@ -4015,6 +4015,63 @@ impl Multivector {
 
         Ok(b_unit.scale(theta))
     }
+
+    /// Compute the square root of this rotor.
+    ///
+    /// For a rotor R representing rotation by angle θ, returns the rotor
+    /// representing rotation by θ/2.
+    ///
+    /// This is computed as: sqrt(R) = exp(log(R) / 2)
+    ///
+    /// The result satisfies: sqrt(R) * sqrt(R) = R (within numerical precision).
+    ///
+    /// Only valid for unit rotors.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+    /// half_R = R.sqrt()  # 45° rotation
+    /// # half_R * half_R ≈ R
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn sqrt(&self) -> PyResult<Self> {
+        let log_r = self.log()?;
+        let half_log = log_r.scale(0.5);
+        half_log.exp()
+    }
+
+    /// Raise this rotor to a floating-point power.
+    ///
+    /// For a rotor R representing rotation by angle θ, R^t represents
+    /// rotation by angle t*θ.
+    ///
+    /// This is computed as: R^t = exp(t * log(R))
+    ///
+    /// Useful for:
+    /// - Fractional rotations (R^0.5 = half rotation)
+    /// - Smooth interpolation (combined with slerp)
+    /// - Animation curves
+    ///
+    /// Only valid for unit rotors.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.from_vector([1.0, 0.0])
+    /// e2 = Multivector.from_vector([0.0, 1.0])
+    /// R = Multivector.rotor_from_vectors(e1, e2)  # 90° rotation
+    /// R_quarter = R.powf(0.25)  # 22.5° rotation
+    /// R_double = R.powf(2.0)  # 180° rotation
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.10 [VERIFY]
+    pub fn powf(&self, t: f64) -> PyResult<Self> {
+        let log_r = self.log()?;
+        let scaled = log_r.scale(t);
+        scaled.exp()
+    }
 }
 
 // Rust-only methods (not exposed to Python)
