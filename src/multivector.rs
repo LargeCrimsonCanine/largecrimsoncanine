@@ -1420,6 +1420,89 @@ impl Multivector {
         })
     }
 
+    /// Round all coefficients to a specified number of decimal places.
+    ///
+    /// Returns a new multivector with rounded coefficients.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.234567, 2.345678])
+    /// rounded = mv.round_coefficients(2)
+    /// rounded.to_list()  # [0.0, 1.23, 2.35, 0.0]
+    /// ```
+    pub fn round_coefficients(&self, ndigits: i32) -> Self {
+        let factor = 10.0_f64.powi(ndigits);
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| (c * factor).round() / factor)
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Clean near-zero coefficients by setting them to exactly zero.
+    ///
+    /// Any coefficient with absolute value less than epsilon is set to 0.0.
+    /// Useful for removing floating-point noise after computations.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([1.0, 1e-15, 0.5])
+    /// cleaned = mv.clean(1e-10)
+    /// cleaned.to_list()  # [0.0, 1.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0]
+    /// ```
+    #[pyo3(signature = (epsilon = 1e-10))]
+    pub fn clean(&self, epsilon: f64) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| if c.abs() < epsilon { 0.0 } else { c })
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Return a multivector with absolute values of all coefficients.
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([-1.0, 2.0, -3.0])
+    /// abs_mv = mv.abs_coefficients()
+    /// abs_mv.to_list()  # [0.0, 1.0, 2.0, 0.0, 3.0, 0.0, 0.0, 0.0]
+    /// ```
+    pub fn abs_coefficients(&self) -> Self {
+        let coeffs: Vec<f64> = self.coeffs.iter().map(|&c| c.abs()).collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
+    /// Clamp all coefficients to a range [min_val, max_val].
+    ///
+    /// Example:
+    /// ```python
+    /// mv = Multivector.from_vector([0.5, 2.0, -1.0])
+    /// clamped = mv.clamp_coefficients(0.0, 1.0)
+    /// clamped.to_list()  # [0.0, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    /// ```
+    pub fn clamp_coefficients(&self, min_val: f64, max_val: f64) -> Self {
+        let coeffs: Vec<f64> = self
+            .coeffs
+            .iter()
+            .map(|&c| c.clamp(min_val, max_val))
+            .collect();
+        Multivector {
+            coeffs,
+            dims: self.dims,
+        }
+    }
+
     /// Return the norm (magnitude) via abs().
     pub fn __abs__(&self) -> f64 {
         self.norm()
