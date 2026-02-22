@@ -3849,6 +3849,72 @@ impl Multivector {
         rotor.sandwich(self)
     }
 
+    /// Rotate this vector by a given angle in a specified plane.
+    ///
+    /// Creates a rotor from the plane bivector and angle, then applies it.
+    /// This is a convenience method combining exp() and sandwich().
+    ///
+    /// The plane should be a unit bivector or will be normalized.
+    /// Positive angles follow the right-hand rule around the plane's normal.
+    ///
+    /// Example:
+    /// ```python
+    /// e1 = Multivector.e1(3)
+    /// e12 = Multivector.e12(3)  # xy-plane
+    /// rotated = e1.rotate_in_plane(math.pi / 2, e12)  # rotate 90° in xy-plane
+    /// # Result: e2
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.7 [VERIFY]
+    pub fn rotate_in_plane(&self, angle: f64, plane: &Multivector) -> PyResult<Self> {
+        if self.dims != plane.dims {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "dimension mismatch: vector is Cl({}) but plane is Cl({}); \
+                both must have the same dimension",
+                self.dims, plane.dims
+            )));
+        }
+
+        // Normalize the plane bivector
+        let plane_norm = plane.norm();
+        if plane_norm == 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "plane bivector has zero norm; cannot rotate in zero plane",
+            ));
+        }
+        let unit_plane = plane.scale(1.0 / plane_norm);
+
+        // Create rotor: R = exp(-angle/2 * B) = cos(angle/2) - sin(angle/2) * B
+        let half_angle = angle / 2.0;
+        let cos_half = half_angle.cos();
+        let sin_half = half_angle.sin();
+
+        let scalar_part = Multivector::from_scalar(cos_half, self.dims)?;
+        let bivector_part = unit_plane.scale(-sin_half);
+        let rotor = scalar_part.__add__(&bivector_part)?;
+
+        // Apply rotation
+        rotor.sandwich(self)
+    }
+
+    /// Project this vector onto a plane (bivector).
+    ///
+    /// Returns the component of this vector that lies within the plane
+    /// represented by the bivector. The result is perpendicular to the
+    /// plane's normal (dual of the bivector in 3D).
+    ///
+    /// Example:
+    /// ```python
+    /// v = Multivector.from_vector([1.0, 2.0, 3.0])
+    /// e12 = Multivector.e12(3)  # xy-plane
+    /// proj = v.project_onto_plane(e12)  # [1.0, 2.0, 0.0]
+    /// ```
+    ///
+    /// Reference: Dorst et al. ch.4 [VERIFY]
+    pub fn project_onto_plane(&self, plane: &Multivector) -> PyResult<Self> {
+        self.project(plane)
+    }
+
     /// Compute the scalar triple product a · (b × c).
     ///
     /// For three vectors a, b, c in 3D, computes the scalar triple product
