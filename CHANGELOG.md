@@ -94,6 +94,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `parallel_component(v)` — component parallel to vector (alias for project)
 - `perpendicular_component(v)` — component perpendicular to vector (alias for reject)
 - `rotate_by(rotor)` — apply rotor rotation to this multivector
+- `rotate_in_plane(angle, plane)` — rotate by angle in a given bivector plane
+- `project_onto_plane(plane)` — project onto a plane (bivector)
 - `triple_product(b, c)` — scalar triple product a·(b×c) in 3D
 - `unit()` — return unit (normalized) multivector (alias for normalized)
 
@@ -199,7 +201,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `n_coeffs` — number of coefficients, equals 2^dimension (property)
 
 **Infrastructure**
-- Python test suite (655 tests)
+- Python test suite (665 tests)
 - Rust test suite (7 tests)
 - PyO3 bindings
 - GitHub Actions CI/CD with path filtering and caching

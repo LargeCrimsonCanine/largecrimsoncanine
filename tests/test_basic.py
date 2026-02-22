@@ -7925,3 +7925,144 @@ def test_density_vector():
 
     # 3 non-zeros out of 8
     assert abs(density - 3.0 / 8.0) < 1e-10
+
+
+# =============================================================================
+# TRANSFORMATION HELPERS
+# =============================================================================
+
+
+def test_rotate_in_plane_90():
+    """rotate_in_plane by 90 degrees."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e12 = lcc.Multivector.e12(3)
+
+    rotated = e1.rotate_in_plane(math.pi / 2, e12)
+
+    e2 = lcc.Multivector.e2(3)
+    assert rotated.approx_eq(e2)
+
+
+def test_rotate_in_plane_180():
+    """rotate_in_plane by 180 degrees."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e12 = lcc.Multivector.e12(3)
+
+    rotated = e1.rotate_in_plane(math.pi, e12)
+
+    neg_e1 = -e1
+    assert rotated.approx_eq(neg_e1)
+
+
+def test_rotate_in_plane_full():
+    """rotate_in_plane by 360 degrees returns original."""
+    import math
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    e12 = lcc.Multivector.e12(3)
+
+    rotated = v.rotate_in_plane(2 * math.pi, e12)
+
+    assert rotated.approx_eq(v)
+
+
+def test_rotate_in_plane_zero():
+    """rotate_in_plane by 0 returns original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    e12 = lcc.Multivector.e12(3)
+
+    rotated = v.rotate_in_plane(0.0, e12)
+
+    assert rotated.approx_eq(v)
+
+
+def test_rotate_in_plane_unnormalized():
+    """rotate_in_plane works with unnormalized plane."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e12 = lcc.Multivector.e12(3)
+
+    # Scale plane by 2 - should still work
+    scaled_plane = e12.scale(2.0)
+    rotated = e1.rotate_in_plane(math.pi / 2, scaled_plane)
+
+    e2 = lcc.Multivector.e2(3)
+    assert rotated.approx_eq(e2)
+
+
+def test_rotate_in_plane_preserves_norm():
+    """rotate_in_plane preserves vector norm."""
+    import math
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e12 = lcc.Multivector.e12(3)
+
+    rotated = v.rotate_in_plane(math.pi / 3, e12)
+
+    assert abs(rotated.norm() - v.norm()) < 1e-10
+
+
+def test_rotate_in_plane_different_planes():
+    """rotate_in_plane works with different plane orientations."""
+    import math
+    import largecrimsoncanine as lcc
+
+    e1 = lcc.Multivector.e1(3)
+    e23 = lcc.Multivector.e23(3)
+
+    # Rotate e1 in the yz-plane - e1 is perpendicular so should be unchanged
+    rotated = e1.rotate_in_plane(math.pi / 2, e23)
+
+    # e1 is perpendicular to yz-plane, so rotation shouldn't change it
+    assert rotated.approx_eq(e1)
+
+
+def test_project_onto_plane_basic():
+    """project_onto_plane removes perpendicular component."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([1.0, 2.0, 3.0])
+    e12 = lcc.Multivector.e12(3)  # xy-plane
+
+    proj = v.project_onto_plane(e12)
+
+    # Should keep xy components, remove z
+    expected = lcc.Multivector.from_vector([1.0, 2.0, 0.0])
+    assert proj.approx_eq(expected)
+
+
+def test_project_onto_plane_in_plane():
+    """project_onto_plane of vector in plane returns original."""
+    import largecrimsoncanine as lcc
+
+    v = lcc.Multivector.from_vector([3.0, 4.0, 0.0])
+    e12 = lcc.Multivector.e12(3)
+
+    proj = v.project_onto_plane(e12)
+
+    assert proj.approx_eq(v)
+
+
+def test_project_onto_plane_perpendicular():
+    """project_onto_plane of perpendicular vector is zero."""
+    import largecrimsoncanine as lcc
+
+    e3 = lcc.Multivector.e3(3)
+    e12 = lcc.Multivector.e12(3)
+
+    proj = e3.project_onto_plane(e12)
+
+    zero = lcc.Multivector.from_vector([0.0, 0.0, 0.0])
+    assert proj.approx_eq(zero)
