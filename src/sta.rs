@@ -926,9 +926,10 @@ mod tests {
         let f_dual = f.sta_em_dual().unwrap();
         let (e_dual, b_dual) = f_dual.sta_field_decompose().unwrap();
 
-        // Dual should give E -> B (with some sign)
-        // For pure Ex, dual should give Bx
-        assert_relative_eq!(b_dual[0], -1.0, epsilon = 1e-10);
+        // Hodge dual maps E -> B.  In Cl(1,3) with I = gamma0123,
+        // I * gamma01 = gamma0123 * gamma01 = +gamma23 = +B_x.
+        // Sign follows from I*F (left-multiply by pseudoscalar).
+        assert_relative_eq!(b_dual[0], 1.0, epsilon = 1e-10);
         assert_relative_eq!(e_dual[0], 0.0, epsilon = 1e-10);
     }
 }
